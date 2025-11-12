@@ -35,6 +35,8 @@ function placeTraceApp() {
         showMovement: false,
         movements: [],
         movementLayer: null,
+        focusModeEnabled: true,  // Default: focus on selected day
+        savedVisitState: null,   // Store visits to restore when focus disabled
         
         // Initialize
         init() {
@@ -215,6 +217,11 @@ function placeTraceApp() {
                 
                 marker.addTo(this.markerLayer);
             });
+        },
+        
+        // Render visits (wrapper for renderMarkers for clarity)
+        renderVisits() {
+            this.renderMarkers();
         },
         
         // Fit map bounds to show all visits
@@ -688,6 +695,11 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
+                // Save current visits before first load (if focus mode enabled)
+                if (this.focusModeEnabled && !this.savedVisitState) {
+                    this.savedVisitState = [...this.visits];
+                }
+                
                 // Fetch movements and visits for the selected day
                 const [movementsResponse, visitsResponse] = await Promise.all([
                     fetch(`/api/movements?date=${this.selectedDay}&include_routes=true`),
@@ -700,7 +712,14 @@ function placeTraceApp() {
                 this.movements = movementsData.movements || [];
                 const dayVisits = visitsData.visits || [];
                 
+                // Render movement tracks with day visits on timeline
                 this.renderMovementsWithVisits(dayVisits);
+                
+                // If focus mode enabled, replace main visit markers with only this day's visits
+                if (this.focusModeEnabled) {
+                    this.visits = dayVisits;
+                    this.renderVisits();
+                }
                 
             } catch (error) {
                 console.error('Error loading movements:', error);
@@ -898,30 +917,81 @@ function placeTraceApp() {
         },
         
         // Toggle movement display
-        toggleMovement() {
+        async toggleMovement() {
             if (this.showMovement && this.selectedDay) {
-                this.loadMovements();
+                // Turning ON tracks - loadMovements handles everything
+                await this.loadMovements();
             } else {
+                // Turning OFF tracks
                 this.clearMovementLayer();
+                
+                // Restore previous visits if focus was active
+                if (this.savedVisitState) {
+                    this.visits = this.savedVisitState;
+                    this.savedVisitState = null;
+                    this.renderVisits();
+                }
+            }
+        },
+        
+        // Toggle focus mode
+        async toggleFocusMode() {
+            if (this.focusModeEnabled) {
+                // Enabling focus - save current visits and show only selected day
+                if (!this.savedVisitState) {
+                    this.savedVisitState = [...this.visits];
+                }
+                await this.applyFocusMode();
+            } else {
+                // Disabling focus - restore previous visits
+                if (this.savedVisitState) {
+                    this.visits = this.savedVisitState;
+                    this.savedVisitState = null;
+                    this.renderVisits();
+                }
+            }
+        },
+        
+        // Apply focus mode - fetch and show only selected day's visits
+        async applyFocusMode() {
+            if (!this.selectedDay) return;
+            
+            try {
+                const response = await fetch(`/api/visits?date=${this.selectedDay}`);
+                const data = await response.json();
+                this.visits = data.visits || [];
+                this.renderVisits();
+            } catch (error) {
+                console.error('Error applying focus mode:', error);
             }
         },
         
         // Navigate to previous day
-        prevDay() {
+        async prevDay() {
             if (!this.selectedDay) return;
             const date = new Date(this.selectedDay);
             date.setDate(date.getDate() - 1);
             this.selectedDay = date.toISOString().split('T')[0];
-            this.loadMovements();
+            await this.loadMovements();
+            
+            // If focus mode active, also update visits
+            if (this.focusModeEnabled && this.showMovement) {
+                await this.applyFocusMode();
+            }
         },
         
         // Navigate to next day
-        nextDay() {
+        async nextDay() {
             if (!this.selectedDay) return;
             const date = new Date(this.selectedDay);
             date.setDate(date.getDate() + 1);
             this.selectedDay = date.toISOString().split('T')[0];
-            this.loadMovements();
+            await this.loadMovements();
+            
+            // If focus mode active, also update visits
+            if (this.focusModeEnabled && this.showMovement) {
+                await this.applyFocusMode();
+            }
         }
     };
 }
