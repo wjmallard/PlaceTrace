@@ -1,0 +1,34 @@
+{
+  "trip_categories": [
+    {
+      "name": "Day Trip",
+      "emoji": "🚗",
+      "color": "lightblue",
+      "min_hours": 4,
+      "max_hours": 16,
+      "description": "Quick excursions - there and back in a day"
+    },
+    {
+      "name": "Short Trip",
+      "emoji": "✈️",
+      "color": "blue",
+      "min_hours": 16,
+      "max_hours": 96,
+      "description": "Weekend getaways and short breaks (1-4 days)"
+    },
+    {
+      "name": "Long Trip",
+      "emoji": "🌍",
+      "color": "darkblue",
+      "min_hours": 96,
+      "max_hours": null,
+      "description": "Extended travel (4+ days)"
+    }
+  ],
+  "trip_detection": {
+    "min_distance_km": 80,
+    "max_gap_hours": 8,
+    "extended_gap_hours": 24,
+    "extended_gap_min_distance_km": 80
+  }
+}

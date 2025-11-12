@@ -1,0 +1,55 @@
+/* PlaceTrace Custom Styles */
+
+/* Ensure map fills container properly */
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Leaflet popup custom styling */
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+}
+
+.leaflet-popup-content {
+    margin: 12px;
+}
+
+/* Custom scrollbar for sidebar */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Smooth transitions for interactive elements */
+button {
+    transition: all 0.2s ease;
+}
+
+/* Prevent text selection on UI controls */
+.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Alpine.js cloak for preventing flash of unstyled content */
+[x-cloak] {
+    display: none !important;
+}
