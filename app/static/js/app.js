@@ -689,13 +689,9 @@ function placeTraceApp() {
             
             try {
                 // Fetch movements and visits for the selected day
-                const startDate = new Date(this.selectedDay);
-                const endDate = new Date(this.selectedDay);
-                endDate.setHours(23, 59, 59, 999);
-                
                 const [movementsResponse, visitsResponse] = await Promise.all([
                     fetch(`/api/movements?date=${this.selectedDay}&include_routes=true`),
-                    fetch(`/api/visits?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&limit=1000`)
+                    fetch(`/api/visits?date=${this.selectedDay}`)
                 ]);
                 
                 const movementsData = await movementsResponse.json();
