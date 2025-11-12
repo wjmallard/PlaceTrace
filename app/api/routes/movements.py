@@ -181,32 +181,20 @@ def get_movements():
             else:
                 end_lat, end_lng = None, None
             
-            # Extract route geometry if requested
-            route = None
+            # Extract route geometry if requested (as GeoJSON)
+            route_geojson = None
             if include_routes and movement.route_geometry:
-                # Extract route as array of [lat, lon] pairs
+                # Extract route as GeoJSON LineString
                 route_result = db.session.execute(
                     db.select(
-                        func.ST_AsText(func.ST_GeomFromWKB(movement.route_geometry))
+                        func.ST_AsGeoJSON(func.ST_GeomFromWKB(movement.route_geometry))
                     )
                 ).scalar()
                 
                 if route_result:
-                    # Parse LINESTRING format: "LINESTRING(lon1 lat1,lon2 lat2,lon3 lat3)"
-                    # PostGIS format: coordinates within a pair use space, pairs separated by comma
-                    coords_str = route_result.replace('LINESTRING(', '').replace(')', '')
-                    
-                    # Split by comma to get individual coordinate pairs
-                    coord_pairs = coords_str.split(',')
-                    route = []
-                    for pair in coord_pairs:
-                        pair = pair.strip()
-                        # Each pair is "lon lat" (space-separated)
-                        if ' ' in pair:
-                            parts = pair.split()
-                            lon = float(parts[0])
-                            lat = float(parts[1])
-                            route.append([lat, lon])
+                    # Parse the GeoJSON string to a dict
+                    import json
+                    route_geojson = json.loads(route_result)
             
             movement_dict = {
                 'id': movement.id,
@@ -227,9 +215,9 @@ def get_movements():
                 'following_visit_id': movement.following_visit_id
             }
             
-            # Only include route if requested and available
+            # Only include route_geojson if requested and available
             if include_routes:
-                movement_dict['route'] = route
+                movement_dict['route_geojson'] = route_geojson
             
             movements_data.append(movement_dict)
         
