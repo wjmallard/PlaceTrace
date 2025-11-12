@@ -688,7 +688,7 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                const response = await fetch(`/api/movements?date=${this.selectedDay}`);
+                const response = await fetch(`/api/movements?date=${this.selectedDay}&include_routes=true`);
                 const data = await response.json();
                 
                 this.movements = data.movements || [];
@@ -724,7 +724,10 @@ function placeTraceApp() {
             this.movements.forEach(segment => {
                 // Build path: use actual path if available, otherwise straight line
                 let path;
-                if (segment.path && segment.path.length > 0) {
+                if (segment.route_geojson && segment.route_geojson.coordinates) {
+                    // GeoJSON uses [lon, lat], Leaflet uses [lat, lon] - flip them
+                    path = segment.route_geojson.coordinates.map(coord => [coord[1], coord[0]]);
+                } else if (segment.path && segment.path.length > 0) {
                     path = segment.path;
                 } else {
                     // Draw straight line from start to end
