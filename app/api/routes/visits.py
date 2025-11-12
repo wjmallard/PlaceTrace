@@ -18,9 +18,10 @@ def get_visits():
     Get visits with optional filters
     
     Query parameters:
+        - date: Single date (YYYY-MM-DD) - convenient shorthand for full day
         - bbox: Bounding box as 'min_lat,min_lng,max_lat,max_lng'
-        - start_date: ISO datetime (inclusive)
-        - end_date: ISO datetime (inclusive)
+        - start_date: ISO datetime (inclusive) - ignored if date is provided
+        - end_date: ISO datetime (inclusive) - ignored if date is provided
         - location_id: Filter by location ID
         - trip_id: Filter by trip ID
         - limit: Maximum results (default 1000)
@@ -31,9 +32,26 @@ def get_visits():
     """
     try:
         # Parse query parameters
+        date_param = request.args.get('date')
         bbox = request.args.get('bbox')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
+        
+        # Handle date parameter - convert YYYY-MM-DD to full day range
+        # This overwrites start_date/end_date if provided
+        if date_param:
+            try:
+                from datetime import timedelta, timezone
+                date_obj = datetime.strptime(date_param, '%Y-%m-%d')
+                # Overwrite with full day range in UTC
+                start_date = date_obj.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).isoformat()
+                end_date = date_obj.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc).isoformat()
+            except ValueError:
+                return jsonify({
+                    'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
+                    'status': 400
+                }), 400
+        
         location_id = request.args.get('location_id', type=int)
         trip_id = request.args.get('trip_id', type=int)
         limit = request.args.get('limit', type=int, default=1000)
@@ -76,6 +94,10 @@ def get_visits():
                 filters['end_date'] = end_date
             except (ValueError, AttributeError) as e:
                 return jsonify({'error': f'Invalid end_date format: {str(e)}', 'status': 400}), 400
+        
+        # Add date to filters if it was used
+        if date_param:
+            filters['date'] = date_param
         
         # Location filter
         if location_id:
