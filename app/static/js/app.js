@@ -31,6 +31,7 @@ function placeTraceApp() {
         showDateFilter: false,
         expandedYears: {},
         showMovementSection: false,
+        showTripsSection: false,  // Default collapsed
         selectedDay: null,
         showMovement: false,
         movements: [],
