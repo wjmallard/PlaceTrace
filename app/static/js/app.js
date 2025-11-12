@@ -688,11 +688,23 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                const response = await fetch(`/api/movements?date=${this.selectedDay}&include_routes=true`);
-                const data = await response.json();
+                // Fetch movements and visits for the selected day
+                const startDate = new Date(this.selectedDay);
+                const endDate = new Date(this.selectedDay);
+                endDate.setHours(23, 59, 59, 999);
                 
-                this.movements = data.movements || [];
-                this.renderMovements();
+                const [movementsResponse, visitsResponse] = await Promise.all([
+                    fetch(`/api/movements?date=${this.selectedDay}&include_routes=true`),
+                    fetch(`/api/visits?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&limit=1000`)
+                ]);
+                
+                const movementsData = await movementsResponse.json();
+                const visitsData = await visitsResponse.json();
+                
+                this.movements = movementsData.movements || [];
+                const dayVisits = visitsData.visits || [];
+                
+                this.renderMovementsWithVisits(dayVisits);
                 
             } catch (error) {
                 console.error('Error loading movements:', error);
@@ -701,8 +713,8 @@ function placeTraceApp() {
             }
         },
         
-        // Render movement polylines on map
-        renderMovements() {
+        // Render movement polylines with visits as chronological chain
+        renderMovementsWithVisits(dayVisits) {
             this.clearMovementLayer();
             
             const activityColors = {
@@ -721,59 +733,162 @@ function placeTraceApp() {
             
             const bounds = [];
             
-            this.movements.forEach(segment => {
-                // Build path: use actual path if available, otherwise straight line
-                let path;
-                if (segment.route_geojson && segment.route_geojson.coordinates) {
-                    // GeoJSON uses [lon, lat], Leaflet uses [lat, lon] - flip them
-                    path = segment.route_geojson.coordinates.map(coord => [coord[1], coord[0]]);
-                } else if (segment.path && segment.path.length > 0) {
-                    path = segment.path;
-                } else {
-                    // Draw straight line from start to end
-                    path = [
-                        [segment.start_latitude, segment.start_longitude],
-                        [segment.end_latitude, segment.end_longitude]
-                    ];
-                }
-                
-                if (path.length < 2) return;
-                
-                // Add points to bounds
-                path.forEach(point => bounds.push(point));
-                
-                const polyline = L.polyline(path, {
-                    color: activityColors[segment.activity_type] || activityColors['UNKNOWN'],
-                    weight: 4,
-                    opacity: 0.7,
-                    smoothFactor: 1
+            // Build chronological timeline of visits and movements
+            const timeline = [];
+            
+            // Add visits
+            dayVisits.forEach(visit => {
+                timeline.push({
+                    type: 'visit',
+                    time: new Date(visit.start_time),
+                    data: visit,
+                    lat: visit.latitude,
+                    lon: visit.longitude
                 });
-                
-                // Add popup with segment info
-                const startTime = new Date(segment.start_time).toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit' 
-                });
-                const endTime = new Date(segment.end_time).toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit' 
-                });
-                
-                const activityLabel = segment.activity_type || 'Movement';
-                const distanceKm = (segment.distance_meters / 1000).toFixed(1);
-                
-                polyline.bindPopup(`
-                    <div class="text-sm">
-                        <div class="font-semibold">${activityLabel}</div>
-                        <div class="text-gray-600 mt-1">${startTime} - ${endTime}</div>
-                        <div class="text-gray-600">Distance: ${distanceKm} km</div>
-                    </div>
-                `);
-                
-                polyline.addTo(this.movementLayer);
             });
             
-            // Fit map to movement bounds
+            // Add movements
+            this.movements.forEach(movement => {
+                timeline.push({
+                    type: 'movement',
+                    time: new Date(movement.start_time),
+                    data: movement
+                });
+            });
+            
+            // Sort chronologically
+            timeline.sort((a, b) => a.time - b.time);
+                        
+            // Render timeline with connectors
+            for (let i = 0; i < timeline.length; i++) {
+                const item = timeline[i];
+                const nextItem = timeline[i + 1];
+                
+                if (item.type === 'visit') {
+                    // Draw visit marker (smaller when in movement mode)
+                    const marker = L.circleMarker([item.lat, item.lon], {
+                        radius: 4,
+                        fillColor: '#3B82F6',
+                        color: '#1E40AF',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                    
+                    const popupContent = `
+                        <div class="text-sm">
+                            <div class="font-semibold">${item.data.location_name}</div>
+                            <div class="text-gray-600 mt-1">
+                                ${this.formatDateTime(item.data.start_time)}
+                            </div>
+                            <div class="text-gray-600">
+                                ${item.data.duration_minutes} minutes
+                            </div>
+                        </div>
+                    `;
+                    marker.bindPopup(popupContent);
+                    marker.addTo(this.movementLayer);
+                    bounds.push([item.lat, item.lon]);
+                    
+                    // Draw connector to next item
+                    if (nextItem) {
+                        let nextLat, nextLon;
+                        if (nextItem.type === 'movement') {
+                            nextLat = nextItem.data.start_latitude;
+                            nextLon = nextItem.data.start_longitude;
+                        } else {
+                            nextLat = nextItem.lat;
+                            nextLon = nextItem.lon;
+                        }
+                        
+                        // Gray dashed connector line
+                        const connector = L.polyline(
+                            [[item.lat, item.lon], [nextLat, nextLon]],
+                            {
+                                color: '#9ca3af',
+                                weight: 2,
+                                opacity: 0.5,
+                                dashArray: '5, 5'
+                            }
+                        );
+                        connector.addTo(this.movementLayer);
+                    }
+                    
+                } else if (item.type === 'movement') {
+                    // Draw movement track
+                    let path;
+                    if (item.data.route_geojson && item.data.route_geojson.coordinates) {
+                        // GeoJSON uses [lon, lat], Leaflet uses [lat, lon] - flip them
+                        path = item.data.route_geojson.coordinates.map(coord => [coord[1], coord[0]]);
+                    } else {
+                        // Draw straight line from start to end
+                        path = [
+                            [item.data.start_latitude, item.data.start_longitude],
+                            [item.data.end_latitude, item.data.end_longitude]
+                        ];
+                    }
+                    
+                    if (path.length >= 2) {
+                        path.forEach(point => bounds.push(point));
+                        
+                        const polyline = L.polyline(path, {
+                            color: activityColors[item.data.activity_type] || activityColors['UNKNOWN'],
+                            weight: 4,
+                            opacity: 0.7,
+                            smoothFactor: 1
+                        });
+                        
+                        // Add popup with segment info
+                        const startTime = new Date(item.data.start_time).toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit' 
+                        });
+                        const endTime = new Date(item.data.end_time).toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit' 
+                        });
+                        
+                        const activityLabel = item.data.activity_type || 'Movement';
+                        const distanceKm = (item.data.distance_meters / 1000).toFixed(1);
+                        
+                        polyline.bindPopup(`
+                            <div class="text-sm">
+                                <div class="font-semibold">${activityLabel}</div>
+                                <div class="text-gray-600 mt-1">${startTime} - ${endTime}</div>
+                                <div class="text-gray-600">Distance: ${distanceKm} km</div>
+                            </div>
+                        `);
+                        
+                        polyline.addTo(this.movementLayer);
+                        
+                        // Draw connector to next item (any type)
+                        if (nextItem) {
+                            let nextLat, nextLon;
+                            if (nextItem.type === 'visit') {
+                                nextLat = nextItem.lat;
+                                nextLon = nextItem.lon;
+                            } else {
+                                // Next item is a movement
+                                nextLat = nextItem.data.start_latitude;
+                                nextLon = nextItem.data.start_longitude;
+                            }
+                            
+                            const connector = L.polyline(
+                                [path[path.length - 1], [nextLat, nextLon]],
+                                {
+                                    color: '#9ca3af',
+                                    weight: 2,
+                                    opacity: 0.5,
+                                    dashArray: '5, 5'
+                                }
+                            );
+                            connector.addTo(this.movementLayer);
+                        }
+                    }
+                }
+            }
+            
+            // Fit map to all bounds
             if (bounds.length > 0) {
                 this.map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
             }
