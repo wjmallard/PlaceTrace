@@ -715,7 +715,7 @@ function placeTraceApp() {
                 // Render movement tracks with day visits on timeline
                 this.renderMovementsWithVisits(dayVisits);
                 
-                // If focus mode enabled, replace main visit markers with only this day's visits
+                // If focus mode enabled, update main markers to show only this day
                 if (this.focusModeEnabled) {
                     this.visits = dayVisits;
                     this.renderVisits();
@@ -935,35 +935,19 @@ function placeTraceApp() {
         },
         
         // Toggle focus mode
-        async toggleFocusMode() {
+        toggleFocusMode() {
             if (this.focusModeEnabled) {
-                // Enabling focus - save current visits and show only selected day
-                if (!this.savedVisitState) {
-                    this.savedVisitState = [...this.visits];
-                }
-                await this.applyFocusMode();
+                // Enabling focus - swap visits
+                const temp = this.visits;
+                this.visits = this.savedVisitState || this.visits;
+                this.savedVisitState = temp;
             } else {
-                // Disabling focus - restore previous visits
-                if (this.savedVisitState) {
-                    this.visits = this.savedVisitState;
-                    this.savedVisitState = null;
-                    this.renderVisits();
-                }
+                // Disabling focus - swap back
+                const temp = this.visits;
+                this.visits = this.savedVisitState;
+                this.savedVisitState = temp;
             }
-        },
-        
-        // Apply focus mode - fetch and show only selected day's visits
-        async applyFocusMode() {
-            if (!this.selectedDay) return;
-            
-            try {
-                const response = await fetch(`/api/visits?date=${this.selectedDay}`);
-                const data = await response.json();
-                this.visits = data.visits || [];
-                this.renderVisits();
-            } catch (error) {
-                console.error('Error applying focus mode:', error);
-            }
+            this.renderVisits();
         },
         
         // Navigate to previous day
@@ -973,11 +957,6 @@ function placeTraceApp() {
             date.setDate(date.getDate() - 1);
             this.selectedDay = date.toISOString().split('T')[0];
             await this.loadMovements();
-            
-            // If focus mode active, also update visits
-            if (this.focusModeEnabled && this.showMovement) {
-                await this.applyFocusMode();
-            }
         },
         
         // Navigate to next day
@@ -987,11 +966,6 @@ function placeTraceApp() {
             date.setDate(date.getDate() + 1);
             this.selectedDay = date.toISOString().split('T')[0];
             await this.loadMovements();
-            
-            // If focus mode active, also update visits
-            if (this.focusModeEnabled && this.showMovement) {
-                await this.applyFocusMode();
-            }
         }
     };
 }
