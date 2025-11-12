@@ -27,12 +27,12 @@ def get_movements():
         - trip_id: Filter by movements connecting visits in this trip
         - min_distance: Minimum distance in meters
         - max_distance: Maximum distance in meters
-        - include_routes: Include route geometry as [[lat, lon], ...] arrays (default: false)
+        - include_routes: Include route_geojson as GeoJSON LineString (default: false)
         - limit: Maximum results (default 1000)
         - offset: Pagination offset (default 0)
     
     Returns:
-        JSON response with movements array, count, date, and filters_applied
+        JSON response with movements array, count, and filters_applied
     """
     try:
         # Date parameter is required
@@ -45,7 +45,7 @@ def get_movements():
         
         # Parse and validate date
         try:
-            from datetime import datetime, timedelta, timezone
+            from datetime import timedelta, timezone
             date_obj = datetime.strptime(date_param, '%Y-%m-%d')
             # Set to full day range in UTC
             start_dt = date_obj.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
