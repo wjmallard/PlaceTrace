@@ -5,11 +5,17 @@
 Import photos from Google Takeout directories WITHOUT geocoding.
 - Multiprocessing: hash → check → extract in parallel workers
 - Streaming insertions: insert as results arrive (Ctrl-C safe)
-- EXIF extraction (PRIMARY SOURCE for metadata)
-- JSON sidecar parsing (stored separately for reference)
+- Timezone-aware datetime extraction with priority system
+- EXIF extraction for camera metadata
+- JSON sidecar parsing for timestamps and GPS
 - Resume capability via hash checking
+- Extracts local_date and local_time from timezone-aware timestamps
 
-PRIORITY: EXIF is primary, sidecar is fallback/supplementary only
+DATETIME PRIORITY:
+1. JSON sidecar (timezone-aware) - BEST
+2. EXIF + GPS (infer timezone) - GOOD
+3. EXIF only (naive, no timezone) - LIMITED
+4. Nothing available - NULL
 
 Usage:
     python 3_import_photos.py
@@ -19,21 +25,13 @@ import orjson
 import hashlib
 from pathlib import Path
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from tqdm import tqdm
 import sys
 from multiprocessing import Pool
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
-
-# Timezone inference
-try:
-    from timezonefinder import TimezoneFinder
-    import pytz
-    TIMEZONE_AVAILABLE = True
-except ImportError:
-    TIMEZONE_AVAILABLE = False
-    print("Warning: timezonefinder/pytz not available - timezone inference disabled")
-    print("Install with: pip install timezonefinder pytz")
+from timezonefinder import TimezoneFinder
 
 # Import database module
 from db import get_main_connection, config
@@ -243,15 +241,15 @@ def determine_photo_datetime(exif_dt, sidecar_data, latitude, longitude, file_pa
         return (sidecar_data['taken_timestamp'], 'json_sidecar')
     
     # Case 2: No JSON, but has EXIF + GPS (GOOD - can infer timezone)
-    if exif_dt and latitude and longitude and TIMEZONE_AVAILABLE:
+    if exif_dt and latitude and longitude:
         try:
             tf = TimezoneFinder()
             timezone_str = tf.timezone_at(lat=latitude, lng=longitude)
             
             if timezone_str:
-                # Convert naive EXIF datetime to timezone-aware
-                tz = pytz.timezone(timezone_str)
-                capture_dt = tz.localize(exif_dt)  # Handles DST automatically
+                # Convert naive EXIF datetime to timezone-aware using zoneinfo
+                tz = ZoneInfo(timezone_str)
+                capture_dt = exif_dt.replace(tzinfo=tz)
                 return (capture_dt, 'exif_gps_tz')
         except Exception as e:
             # timezonefinder failed - fall through to naive
@@ -260,6 +258,32 @@ def determine_photo_datetime(exif_dt, sidecar_data, latitude, longitude, file_pa
     # Case 3 & 4: Has EXIF but no GPS, or no datetime at all
     # Store NULL for capture_datetime (we can't determine timezone)
     return (None, 'exif_naive' if exif_dt else None)
+
+
+def extract_local_date_time(capture_datetime, exif_datetime):
+    """
+    Extract local date and time for database storage.
+    
+    Priority:
+    1. If capture_datetime exists (timezone-aware), extract local date/time from it
+    2. If only exif_datetime exists (naive), use that
+    3. Otherwise return None, None
+    
+    Args:
+        capture_datetime: Timezone-aware datetime or None
+        exif_datetime: Naive datetime or None
+    
+    Returns: (local_date, local_time) tuple
+    """
+    if capture_datetime:
+        # Have timezone-aware datetime - extract local representation
+        return capture_datetime.date(), capture_datetime.time()
+    elif exif_datetime:
+        # Have naive EXIF datetime - use as local time
+        return exif_datetime.date(), exif_datetime.time()
+    else:
+        # No datetime available
+        return None, None
 
 
 def compute_file_hash(file_path):
@@ -385,6 +409,9 @@ def process_single_photo(args):
             exif_dt, sidecar, latitude, longitude, photo_path
         )
         
+        # Extract local date and time
+        local_date, local_time = extract_local_date_time(capture_datetime, exif_dt)
+        
         # Camera metadata (EXIF only - all might be None)
         camera_make = exif.get('camera_make') if exif else None
         camera_model = exif.get('camera_model') if exif else None
@@ -410,6 +437,8 @@ def process_single_photo(args):
             'capture_datetime': capture_datetime,
             'exif_datetime': exif_dt,  # Naive EXIF datetime
             'datetime_source': datetime_source,
+            'local_date': local_date,
+            'local_time': local_time,
             'latitude': latitude,
             'longitude': longitude,
             'camera_make': camera_make,
@@ -446,6 +475,8 @@ def process_single_photo(args):
                 'capture_datetime': None,
                 'exif_datetime': None,
                 'datetime_source': None,
+                'local_date': None,
+                'local_time': None,
                 'latitude': None,
                 'longitude': None,
                 'camera_make': None,
@@ -537,6 +568,7 @@ def import_photos(conn, photo_directories):
                         INSERT INTO Photos (
                             file_path, file_hash, file_size_bytes, file_mtime,
                             capture_datetime, exif_datetime, datetime_source,
+                            local_date, local_time,
                             latitude, longitude, location_id,
                             camera_make, camera_model, lens_model,
                             focal_length_mm, aperture_f_number, shutter_speed_seconds,
@@ -546,6 +578,7 @@ def import_photos(conn, photo_directories):
                         ) VALUES (
                             %s, %s, %s, %s,
                             %s, %s, %s,
+                            %s, %s,
                             %s, %s, NULL,
                             %s, %s, %s,
                             %s, %s, %s,
@@ -561,6 +594,8 @@ def import_photos(conn, photo_directories):
                         metadata['capture_datetime'],
                         metadata['exif_datetime'],
                         metadata['datetime_source'],
+                        metadata['local_date'],
+                        metadata['local_time'],
                         metadata['latitude'],
                         metadata['longitude'],
                         metadata['camera_make'],
@@ -636,6 +671,9 @@ def print_summary(conn):
     cursor.execute("SELECT COUNT(*) as count FROM Photos WHERE capture_datetime IS NOT NULL")
     with_datetime = cursor.fetchone()['count']
     
+    cursor.execute("SELECT COUNT(*) as count FROM Photos WHERE local_date IS NOT NULL")
+    with_local_time = cursor.fetchone()['count']
+    
     cursor.execute("""
         SELECT datetime_source, COUNT(*) as count
         FROM Photos
@@ -673,6 +711,7 @@ def print_summary(conn):
     print(f"\nTotal photos:        {total:>8,}")
     print(f"With GPS coords:     {with_gps:>8,} ({with_gps/total*100 if total > 0 else 0:.1f}%)")
     print(f"With datetime:       {with_datetime:>8,} ({with_datetime/total*100 if total > 0 else 0:.1f}%)")
+    print(f"With local date:     {with_local_time:>8,} ({with_local_time/total*100 if total > 0 else 0:.1f}%)")
     
     print(f"\nDatetime sources:")
     for row in by_source:
@@ -690,7 +729,7 @@ def print_summary(conn):
 def main():
     """Main execution flow"""
     print("="*60)
-    print("IMPORT PHOTOS (WITHOUT GEOCODING)")
+    print("IMPORT PHOTOS")
     print("="*60)
     
     # Get photo directories from config
@@ -707,7 +746,6 @@ def main():
         print_summary(conn)
         
         print("✓ Photo import complete!")
-        print("\nNext step: Run 4_geocode.py to populate location_id")
         
     except Exception as e:
         print(f"\n✗ Error during import: {e}", file=sys.stderr)
