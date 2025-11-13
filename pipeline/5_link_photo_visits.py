@@ -4,7 +4,7 @@
 
 Link photos to visits using spatio-temporal matching:
 1. Match photos to existing visits (eg: ±15min, 100m)
-2. Cluster unmatched photos using ST_ClusterDBSCAN (30min, 5m)
+2. Cluster unmatched photos using ST_ClusterDBSCAN (eg: 30min, 5m)
 3. Create synthetic photo-session visits for clusters
 4. Update Photos.visit_id foreign keys
 

@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-4_geocode.py
+6_geocode.py
 
 Batch geocode all Photos and Visits with NULL location_id.
 - Finds unique coordinates from both tables
 - Geocodes each unique coordinate ONCE
 - Batch updates all matching records
-- Much faster than geocoding during import
 
 Usage:
-    python 4_geocode.py
+    python 6_geocode.py
 """
 
 from tqdm import tqdm

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-6_detect_trips.py
+7_detect_trips.py
 
 Detect and categorize trips from location history:
 - Loads home/work locations from JSON files (date-aware)
@@ -13,10 +13,9 @@ Requirements:
 - home_locations.json - Date-aware home locations
 - work_locations.json - Date-aware work locations
 - trip_config.json - Trip category definitions
-- Movements table (populated by 5b_import_movements.py)
 
 Usage:
-    python 6_detect_trips.py
+    python 7_detect_trips.py
 """
 
 import json
@@ -34,7 +33,7 @@ def load_locations_json(filename):
     Load home or work locations from JSON file.
     Returns list of location dicts with parsed dates.
     """
-    # Find project root: pipeline/6_detect_trips.py -> ../data/
+    # Find project root: pipeline/7_detect_trips.py -> ../data/
     project_root = Path(__file__).parent.parent
     filepath = project_root / "data" / filename
     
@@ -57,7 +56,7 @@ def load_locations_json(filename):
 
 def load_trip_config():
     """Load trip configuration from trip_config.json"""
-    # Find project root: pipeline/6_detect_trips.py -> ../config/
+    # Find project root: pipeline/7_detect_trips.py -> ../config/
     project_root = Path(__file__).parent.parent
     filepath = project_root / "config" / "trip_config.json"
     
@@ -859,7 +858,7 @@ def main():
         
         if movement_count == 0:
             print("\n⚠ Warning: Movements table is empty")
-            print("   Consider running 5b_import_movements.py first")
+            print("   Consider importing movements first")
             print("   Trip detection will proceed without movement data\n")
         else:
             print(f"✓ Found {movement_count:,} movements for gap analysis")
@@ -871,7 +870,7 @@ def main():
         
         if not visits:
             print("\n✗ No visits found in database")
-            print("   Run 2_import_visits.py first")
+            print("   Import visits, photos, and movements first")
             return
         
         # Step 2: Detect trips
