@@ -230,7 +230,7 @@
                                                     class="w-full text-left p-3 rounded-lg border transition-colors">
                                                     <div class="font-medium text-gray-900" x-text="trip.display_name"></div>
                                                     <div class="text-xs text-gray-600 mt-1">
-                                                        <span x-text="formatDateRange(trip.start_time, trip.end_time)"></span>
+                                                        <span x-text="formatDateRange(trip.local_start_date, trip.local_end_date)"></span>
                                                     </div>
                                                     <div class="text-xs text-gray-500 mt-1">
                                                         <span x-text="trip.visit_count + ' visits · ' + trip.photo_count + ' photos'"></span>
@@ -253,7 +253,7 @@
                                         class="w-full text-left p-3 rounded-lg border transition-colors">
                                         <div class="font-medium text-gray-900" x-text="trip.display_name"></div>
                                         <div class="text-xs text-gray-600 mt-1">
-                                            <span x-text="formatDateRange(trip.start_time, trip.end_time)"></span>
+                                            <span x-text="formatDateRange(trip.local_start_date, trip.local_end_date)"></span>
                                         </div>
                                         <div class="text-xs text-gray-500 mt-1">
                                             <span x-text="trip.visit_count + ' visits · ' + trip.photo_count + ' photos'"></span>

@@ -200,7 +200,7 @@ function placeTraceApp() {
                     <div class="text-sm">
                         <div class="font-semibold">${visit.location_name}</div>
                         <div class="text-gray-600 mt-1">
-                            ${this.formatDateTime(visit.start_time)}
+                            ${this.formatLocalDateTime(visit.local_start_date, visit.local_start_time)}
                         </div>
                         <div class="text-gray-600">
                             ${visit.duration_minutes} minutes
@@ -254,7 +254,7 @@ function placeTraceApp() {
             const currentYear = new Date().getFullYear();
             
             this.filteredTrips.forEach(trip => {
-                const year = new Date(trip.start_time).getFullYear();
+                const year = new Date(trip.local_start_date).getFullYear();
                 if (!grouped[year]) {
                     grouped[year] = [];
                     // Expand current year by default
@@ -278,7 +278,7 @@ function placeTraceApp() {
         // Check if year grouping is needed
         get shouldShowYearGrouping() {
             const years = [...new Set(this.filteredTrips.map(trip => 
-                new Date(trip.start_time).getFullYear()
+                new Date(trip.local_start_date).getFullYear()
             ))];
             return years.length > 1;
         },
@@ -292,8 +292,8 @@ function placeTraceApp() {
         selectTrip(trip) {
             this.selectedTripId = trip.id;
             
-            // Update movement date to trip start date
-            this.selectedDay = new Date(trip.start_time).toISOString().split('T')[0];
+            // Update movement date to trip start date (already in YYYY-MM-DD format)
+            this.selectedDay = trip.local_start_date;
             
             // Add trip filter chip
             this.addFilter({
@@ -676,8 +676,37 @@ function placeTraceApp() {
         
         // Format datetime for visit display
         formatDateTime(datetime) {
-            const date = new Date(datetime);
-            return date.toLocaleDateString('en-US', {
+            // Local time strings come as "HH:MM:SS" - combine with date for display
+            // If it's an ISO datetime, parse it; otherwise treat as local time string
+            if (!datetime) return '';
+            
+            // If datetime contains 'T', it's an ISO datetime string
+            if (datetime.includes('T')) {
+                const date = new Date(datetime);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+            }
+            
+            // Otherwise it's just a time string like "14:30:00"
+            // Return time portion only
+            const [hours, minutes] = datetime.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        },
+        
+        formatLocalDateTime(date, time) {
+            // Combine local_date and local_time for display
+            if (!date || !time) return '';
+            
+            const dateObj = new Date(date + 'T' + time);
+            return dateObj.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
@@ -756,7 +785,7 @@ function placeTraceApp() {
             dayVisits.forEach(visit => {
                 timeline.push({
                     type: 'visit',
-                    time: new Date(visit.start_time),
+                    time: new Date(visit.local_start_date + 'T' + visit.local_start_time),
                     data: visit,
                     lat: visit.latitude,
                     lon: visit.longitude
@@ -767,7 +796,7 @@ function placeTraceApp() {
             this.movements.forEach(movement => {
                 timeline.push({
                     type: 'movement',
-                    time: new Date(movement.start_time),
+                    time: new Date(movement.local_start_date + 'T' + movement.local_start_time),
                     data: movement
                 });
             });
@@ -795,7 +824,7 @@ function placeTraceApp() {
                         <div class="text-sm">
                             <div class="font-semibold">${item.data.location_name}</div>
                             <div class="text-gray-600 mt-1">
-                                ${this.formatDateTime(item.data.start_time)}
+                                ${this.formatLocalDateTime(item.data.local_start_date, item.data.local_start_time)}
                             </div>
                             <div class="text-gray-600">
                                 ${item.data.duration_minutes} minutes
@@ -855,14 +884,8 @@ function placeTraceApp() {
                         });
                         
                         // Add popup with segment info
-                        const startTime = new Date(item.data.start_time).toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit' 
-                        });
-                        const endTime = new Date(item.data.end_time).toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit' 
-                        });
+                        const startTime = this.formatDateTime(item.data.local_start_time);
+                        const endTime = this.formatDateTime(item.data.local_end_time);
                         
                         const activityLabel = item.data.activity_type || 'Movement';
                         const distanceKm = (item.data.distance_meters / 1000).toFixed(1);
