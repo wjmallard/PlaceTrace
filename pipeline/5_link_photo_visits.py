@@ -241,11 +241,8 @@ def create_photo_session_visits(conn, clusters):
                 longitude = float(centroid_parts[0])
                 latitude = float(centroid_parts[1])
                 
-                # Calculate duration
-                if start_time == end_time:
-                    duration_minutes = 0
-                else:
-                    duration_minutes = int((end_time - start_time).total_seconds() / 60)
+                # Calculate duration (minimum 1 minute)
+                duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
                 
                 # Extract local date and time from both start and end times
                 local_start_date = start_time.date()

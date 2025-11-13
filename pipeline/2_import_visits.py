@@ -156,8 +156,8 @@ def import_visits(conn, json_path):
             local_start_date, local_start_time = extract_local_date_time(start_time_str)
             local_end_date, local_end_time = extract_local_date_time(end_time_str)
             
-            # Calculate duration in minutes
-            duration_minutes = int((end_time - start_time).total_seconds() / 60)
+            # Calculate duration in minutes (minimum 1 minute)
+            duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
             
             # Parse location using original parse_geo_string function
             try:

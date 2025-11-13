@@ -325,8 +325,8 @@ def parse_activity_old_format(obj):
     # Extract local date/time from both start and end timestamps
     local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
-    # Calculate duration
-    duration_minutes = int((end_time - start_time).total_seconds() / 60)
+    # Calculate duration (minimum 1 minute)
+    duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
     
     # Parse start/end locations
     start_location = parse_geo_point(activity.get('start'))
@@ -390,7 +390,7 @@ def parse_activity_new_format(obj):
     # Extract local date/time from both start and end timestamps
     local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
-    duration_minutes = int((end_time - start_time).total_seconds() / 60)
+    duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
     
     # Parse locations
     start_location = parse_geo_point(activity.get('start'))
@@ -463,7 +463,7 @@ def parse_breadcrumb_trail(obj):
     # Extract local date/time from both start and end timestamps
     local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
-    duration_minutes = int((end_time - start_time).total_seconds() / 60)
+    duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
     
     timeline_path = obj.get('timelinePath', [])
     if not timeline_path or len(timeline_path) < 2:
