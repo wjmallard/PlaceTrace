@@ -9,7 +9,7 @@ Handles multiple Google Timeline formats:
 2. New format (2019+): 'activitySegment' objects  
 3. Standalone 'timelinePath' breadcrumb trails
 
-All movements stored in unified Movements table with:
+All movements stored in main Movements table with:
 - source='google_timeline'
 - movement_type='activity' or 'breadcrumb_trail'
 - source_metadata JSONB for format-specific fields
@@ -27,7 +27,7 @@ from tqdm import tqdm
 import sys
 
 # Import database module
-from db import get_unified_connection
+from db import get_main_connection
 
 
 def load_config():
@@ -705,7 +705,7 @@ def main():
         sys.exit(1)
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Parse movements from JSON (convert generator to list for progress bar)

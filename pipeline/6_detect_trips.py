@@ -26,7 +26,7 @@ from tqdm import tqdm
 import sys
 
 # Import database module
-from db import get_unified_connection
+from db import get_main_connection
 
 
 def load_locations_json(filename):
@@ -848,7 +848,7 @@ def main():
         sys.exit(1)
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Check if Movements table has data

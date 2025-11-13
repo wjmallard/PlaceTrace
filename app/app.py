@@ -17,7 +17,7 @@ def create_app():
     # Load configuration
     config = load_config()
     app.config['CONFIG'] = config
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg:///{config['databases']['unified']}"
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg:///{config['databases']['main']}"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Enable CORS for localhost during development

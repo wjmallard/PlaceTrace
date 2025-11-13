@@ -16,7 +16,7 @@ from datetime import datetime, date
 from collections import defaultdict
 
 # Import database module
-from db import get_unified_connection
+from db import get_main_connection
 
 
 def load_locations(location_type):
@@ -505,7 +505,7 @@ def main():
         print("Analyzing location history to find continuous residency/employment periods...")
         print()
         
-        conn = get_unified_connection()
+        conn = get_main_connection()
         
         try:
             if location_type == 'home':

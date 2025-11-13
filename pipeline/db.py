@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Database configuration and operations for Unified Location & Photo Archive
-Handles connections to both unified database and OSM boundaries database
+Handles connections to both main database and OSM boundaries database
 Provides geocoding and location management functions
 """
 
@@ -36,10 +36,10 @@ config = load_config()
 # Database Connections
 # ============================================================================
 
-def get_unified_connection():
-    """Create connection to unified location/photos database - uses .pgpass"""
+def get_main_connection():
+    """Create connection to main database - uses .pgpass"""
     conn = psycopg.connect(
-        dbname=config['databases']['unified'],
+        dbname=config['databases']['main'],
         row_factory=dict_row
     )
     # Set session timezone to UTC to prevent timezone confusion
@@ -159,7 +159,7 @@ def get_or_create_location(conn, location_info):
     Get existing location_id or create new location entry.
     
     Args:
-        conn: Database connection to unified database
+        conn: Database connection to main database
         location_info: Dict from geocode_point() with hierarchy info
     
     Returns:

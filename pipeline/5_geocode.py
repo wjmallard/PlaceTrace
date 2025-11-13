@@ -17,7 +17,7 @@ import sys
 from collections import defaultdict
 
 # Import database module
-from db import get_unified_connection, geocode_point, get_or_create_location, config
+from db import get_main_connection, geocode_point, get_or_create_location, config
 
 # For multiprocessing
 from multiprocessing import Pool
@@ -26,7 +26,7 @@ from multiprocessing import Pool
 def worker_geocode(lat_lon):
     """
     Worker function for parallel geocoding.
-    Only reads from OSM database (no writes to unified database).
+    Only reads from OSM database (no writes to main database).
     Returns (lat, lon, location_info) tuple.
     """
     lat, lon = lat_lon
@@ -114,7 +114,7 @@ def geocode_and_update(conn, coord_list, coord_to_records):
     Geocode coordinates in parallel, update database sequentially.
     
     Args:
-        conn: Database connection (unified database)
+        conn: Database connection (main database)
         coord_list: List of (lat, lon) tuples to geocode
         coord_to_records: Dict mapping (lat, lon) to {'photos': [ids], 'visits': [ids]}
     
@@ -123,7 +123,7 @@ def geocode_and_update(conn, coord_list, coord_to_records):
     
     Architecture:
         - Worker processes: Read OSM database in parallel (CPU-bound spatial queries)
-        - Main thread: Write to unified database sequentially (no race conditions)
+        - Main thread: Write to main database sequentially (no race conditions)
     """
     print("\nGeocoding coordinates in parallel (sequential database updates)...")
     
@@ -292,7 +292,7 @@ def main():
     print("="*60)
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Step 1: Get unique coordinates needing geocoding

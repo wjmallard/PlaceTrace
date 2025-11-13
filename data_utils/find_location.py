@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime, date
 
 # Import database module
-from db import get_unified_connection
+from db import get_main_connection
 
 
 def find_location_candidates(conn, location_type, start_date, end_date, min_hours=100):
@@ -195,7 +195,7 @@ def main():
     print()
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Find candidates

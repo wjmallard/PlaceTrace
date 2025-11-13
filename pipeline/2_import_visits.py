@@ -21,7 +21,7 @@ from tqdm import tqdm
 import sys
 
 # Import database module
-from db import get_unified_connection, config
+from db import get_main_connection, config
 
 
 def parse_geo_string(geo_str):
@@ -233,7 +233,7 @@ def main():
     json_path = config['source_data']['location_history_json']
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Import visits

@@ -39,7 +39,7 @@ NUM_WORKERS = config['processing']['num_workers']
 def get_db_connection():
     """Get database connection"""
     return psycopg.connect(
-        dbname=config['databases']['unified'],
+        dbname=config['databases']['main'],
         row_factory=dict_row
     )
 
@@ -119,7 +119,7 @@ def main():
     
     # Prepare work items (photo_id, file_path, db_config)
     work_items = [
-        (photo['id'], photo['file_path'], config['databases']['unified'])
+        (photo['id'], photo['file_path'], config['databases']['main'])
         for photo in photos
     ]
     

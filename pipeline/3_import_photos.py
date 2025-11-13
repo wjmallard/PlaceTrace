@@ -36,7 +36,7 @@ except ImportError:
     print("Install with: pip install timezonefinder pytz")
 
 # Import database module
-from db import get_unified_connection, config
+from db import get_main_connection, config
 
 # Enable HEIF/AVIF support
 try:
@@ -697,7 +697,7 @@ def main():
     photo_directories = config['source_data']['photo_directories']
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Import photos

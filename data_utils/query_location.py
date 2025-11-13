@@ -22,7 +22,7 @@ import sys
 from datetime import datetime
 
 # Import database module
-from db import get_unified_connection
+from db import get_main_connection
 
 
 def stats(conn):
@@ -465,7 +465,7 @@ def main():
         sys.exit(0)
     
     command = sys.argv[1]
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         if command == 'stats':

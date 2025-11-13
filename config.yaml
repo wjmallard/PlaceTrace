@@ -2,7 +2,7 @@
 
 # Database Settings
 databases:
-  unified: unified_location_photos  # Main database
+  main: placetrace                 # Main database
   osm: osm_boundaries              # OSM boundaries for geocoding
 
 # Source Data

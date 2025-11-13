@@ -19,7 +19,7 @@ from tqdm import tqdm
 import sys
 
 # Import database module
-from db import get_unified_connection, config
+from db import get_main_connection, config
 
 
 def match_photos_to_existing_visits(conn):
@@ -406,7 +406,7 @@ def main():
     print("="*60)
     
     # Connect to database
-    conn = get_unified_connection()
+    conn = get_main_connection()
     
     try:
         # Step 1: Match photos to existing visits
