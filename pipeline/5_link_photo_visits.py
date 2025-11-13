@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-4_link_photo_visits.py
+5_link_photo_visits.py
 
 Link photos to visits using spatio-temporal matching:
-1. Match photos to existing visits (±15min, 100m)
+1. Match photos to existing visits (eg: ±15min, 100m)
 2. Cluster unmatched photos using ST_ClusterDBSCAN (30min, 5m)
-3. Create photo-session visits for clusters (WITHOUT geocoding)
+3. Create synthetic photo-session visits for clusters
 4. Update Photos.visit_id foreign keys
 
 Note: Photo-session visits created with location_id = NULL
-      Run 5_geocode.py after this to populate location_id for all records
+      Run geocoding next to populate location_id for all records
 
 Usage:
-    python 4_link_photo_visits.py
+    python 5_link_photo_visits.py
 """
 
 from tqdm import tqdm
@@ -247,23 +247,29 @@ def create_photo_session_visits(conn, clusters):
                 else:
                     duration_minutes = int((end_time - start_time).total_seconds() / 60)
                 
-                # Create visit record WITHOUT geocoding (location_id = NULL)
+                # Extract local date and time from start_time
+                local_date = start_time.date()
+                local_time = start_time.time()
+                
+                # Create "photo-session" visit record
                 cursor.execute("""
                     INSERT INTO Visits (
                         start_time,
                         end_time,
                         duration_minutes,
+                        local_date,
+                        local_time,
                         location,
                         location_id,
                         visit_type
                     ) VALUES (
-                        %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
                         NULL,
                         'photo_session'
                     )
                     RETURNING id
-                """, (start_time, end_time, duration_minutes, longitude, latitude))
+                """, (start_time, end_time, duration_minutes, local_date, local_time, longitude, latitude))
                 
                 visit_id = cursor.fetchone()['id']
                 visits_created += 1
@@ -422,7 +428,6 @@ def main():
         print_summary_statistics(conn)
         
         print("✓ Photo-visit linking complete!")
-        print("\nNext step: Run 5_geocode.py to populate location_id for all records")
         
     except Exception as e:
         print(f"\n✗ Error during photo-visit linking: {e}", file=sys.stderr)
