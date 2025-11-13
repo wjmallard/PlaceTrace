@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-5b_import_movements.py
+3_import_movements.py
 
 Parse and import movement data from Google Timeline JSON into Movements table.
 
@@ -15,7 +15,7 @@ All movements stored in Movements table with:
 - source_metadata JSONB for format-specific fields
 
 Usage:
-    python 5b_import_movements.py
+    python 3_import_movements.py
 """
 
 import orjson

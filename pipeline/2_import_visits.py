@@ -250,7 +250,6 @@ def import_visits(conn, json_path):
     
     print(f"\n✓ Imported {imported:,} new visits")
     print(f"⊘ Skipped {skipped:,} visits (missing coords or already in database)")
-    print(f"\nNote: location_id is NULL - run 4_geocode.py to populate")
     
     return imported
 

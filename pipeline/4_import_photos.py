@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-3_import_photos.py
+4_import_photos.py
 
 Import photos from Google Takeout directories WITHOUT geocoding.
 - Multiprocessing: hash → check → extract in parallel workers
@@ -18,7 +18,7 @@ DATETIME PRIORITY:
 4. Nothing available - NULL
 
 Usage:
-    python 3_import_photos.py
+    python 4_import_photos.py
 """
 
 import orjson
