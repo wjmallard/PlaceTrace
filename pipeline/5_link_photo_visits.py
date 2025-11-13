@@ -247,9 +247,11 @@ def create_photo_session_visits(conn, clusters):
                 else:
                     duration_minutes = int((end_time - start_time).total_seconds() / 60)
                 
-                # Extract local date and time from start_time
-                local_date = start_time.date()
-                local_time = start_time.time()
+                # Extract local date and time from both start and end times
+                local_start_date = start_time.date()
+                local_start_time = start_time.time()
+                local_end_date = end_time.date()
+                local_end_time = end_time.time()
                 
                 # Create "photo-session" visit record
                 cursor.execute("""
@@ -257,19 +259,21 @@ def create_photo_session_visits(conn, clusters):
                         start_time,
                         end_time,
                         duration_minutes,
-                        local_date,
-                        local_time,
+                        local_start_date,
+                        local_start_time,
+                        local_end_date,
+                        local_end_time,
                         location,
                         location_id,
                         visit_type
                     ) VALUES (
-                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s,
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
                         NULL,
                         'photo_session'
                     )
                     RETURNING id
-                """, (start_time, end_time, duration_minutes, local_date, local_time, longitude, latitude))
+                """, (start_time, end_time, duration_minutes, local_start_date, local_start_time, local_end_date, local_end_time, longitude, latitude))
                 
                 visit_id = cursor.fetchone()['id']
                 visits_created += 1

@@ -61,6 +61,16 @@ def extract_local_date_time(timestamp_str):
     return dt.date(), dt.time()
 
 
+def extract_start_end_local_times(start_time_str, end_time_str):
+    """
+    Extract local date/time for both start and end timestamps.
+    Returns (start_date, start_time, end_date, end_time) tuple.
+    """
+    local_start_date, local_start_time = extract_local_date_time(start_time_str)
+    local_end_date, local_end_time = extract_local_date_time(end_time_str)
+    return local_start_date, local_start_time, local_end_date, local_end_time
+
+
 def parse_geo_point(geo_str):
     """
     Parse 'geo:lat,lon' string to (lat, lon) tuple.
@@ -312,8 +322,8 @@ def parse_activity_old_format(obj):
     except (KeyError, ValueError) as e:
         return None
     
-    # Extract local date/time from start timestamp
-    local_date, local_time = extract_local_date_time(start_time_str)
+    # Extract local date/time from both start and end timestamps
+    local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
     # Calculate duration
     duration_minutes = int((end_time - start_time).total_seconds() / 60)
@@ -343,8 +353,10 @@ def parse_activity_old_format(obj):
         'start_time': start_time,
         'end_time': end_time,
         'duration_minutes': duration_minutes,
-        'local_date': local_date,
-        'local_time': local_time,
+        'local_start_date': local_start_date,
+        'local_start_time': local_start_time,
+        'local_end_date': local_end_date,
+        'local_end_time': local_end_time,
         'start_location': start_location,
         'end_location': end_location,
         'activity_type': activity_type,
@@ -375,8 +387,8 @@ def parse_activity_new_format(obj):
     except (KeyError, ValueError) as e:
         return None
     
-    # Extract local date/time from start timestamp
-    local_date, local_time = extract_local_date_time(start_time_str)
+    # Extract local date/time from both start and end timestamps
+    local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
     duration_minutes = int((end_time - start_time).total_seconds() / 60)
     
@@ -410,8 +422,10 @@ def parse_activity_new_format(obj):
         'start_time': start_time,
         'end_time': end_time,
         'duration_minutes': duration_minutes,
-        'local_date': local_date,
-        'local_time': local_time,
+        'local_start_date': local_start_date,
+        'local_start_time': local_start_time,
+        'local_end_date': local_end_date,
+        'local_end_time': local_end_time,
         'start_location': start_location,
         'end_location': end_location,
         'activity_type': activity_type,
@@ -446,8 +460,8 @@ def parse_breadcrumb_trail(obj):
     except (KeyError, ValueError) as e:
         return None
     
-    # Extract local date/time from start timestamp
-    local_date, local_time = extract_local_date_time(start_time_str)
+    # Extract local date/time from both start and end timestamps
+    local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
     duration_minutes = int((end_time - start_time).total_seconds() / 60)
     
@@ -485,8 +499,10 @@ def parse_breadcrumb_trail(obj):
         'start_time': start_time,
         'end_time': end_time,
         'duration_minutes': duration_minutes,
-        'local_date': local_date,
-        'local_time': local_time,
+        'local_start_date': local_start_date,
+        'local_start_time': local_start_time,
+        'local_end_date': local_end_date,
+        'local_end_time': local_end_time,
         'start_location': first_point,
         'end_location': last_point,
         'activity_type': None,  # Breadcrumbs don't have activity type
@@ -563,8 +579,10 @@ def import_movements_to_database(conn, movements):
                     start_time,
                     end_time,
                     duration_minutes,
-                    local_date,
-                    local_time,
+                    local_start_date,
+                    local_start_time,
+                    local_end_date,
+                    local_end_time,
                     start_location,
                     end_location,
                     route_geometry,
@@ -577,7 +595,7 @@ def import_movements_to_database(conn, movements):
                     preceding_visit_id,
                     following_visit_id
                 ) VALUES (
-                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
                     ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
                     ST_GeomFromText(%s, 4326)::geography,
@@ -590,8 +608,10 @@ def import_movements_to_database(conn, movements):
                 movement['start_time'],
                 movement['end_time'],
                 movement['duration_minutes'],
-                movement['local_date'],
-                movement['local_time'],
+                movement['local_start_date'],
+                movement['local_start_time'],
+                movement['local_end_date'],
+                movement['local_end_time'],
                 start_lon, start_lat,  # PostGIS uses lon,lat order
                 end_lon, end_lat,
                 movement['route_geometry'],

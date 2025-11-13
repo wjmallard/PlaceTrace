@@ -153,7 +153,8 @@ def import_visits(conn, json_path):
             end_time = parse_timestamp(end_time_str)
             
             # Extract local date and time from original timezone-aware strings
-            local_date, local_time = extract_local_date_time(start_time_str)
+            local_start_date, local_start_time = extract_local_date_time(start_time_str)
+            local_end_date, local_end_time = extract_local_date_time(end_time_str)
             
             # Calculate duration in minutes
             duration_minutes = int((end_time - start_time).total_seconds() / 60)
@@ -187,14 +188,18 @@ def import_visits(conn, json_path):
                         start_time,
                         end_time,
                         duration_minutes,
-                        local_date,
-                        local_time,
+                        local_start_date,
+                        local_start_time,
+                        local_end_date,
+                        local_end_time,
                         location,
                         location_id,
                         visit_type,
                         semantic_type,
                         place_id
                     ) VALUES (
+                        %s,
+                        %s,
                         %s,
                         %s,
                         %s,
@@ -210,8 +215,10 @@ def import_visits(conn, json_path):
                     start_time,
                     end_time,
                     duration_minutes,
-                    local_date,
-                    local_time,
+                    local_start_date,
+                    local_start_time,
+                    local_end_date,
+                    local_end_time,
                     lon, lat,  # PostGIS uses lon, lat order
                     semantic_type,
                     place_id
@@ -264,7 +271,7 @@ def print_summary(conn):
     cursor.execute("SELECT COUNT(*) as count FROM Visits WHERE location_id IS NULL")
     ungeocoded = cursor.fetchone()['count']
     
-    cursor.execute("SELECT COUNT(*) as count FROM Visits WHERE local_date IS NOT NULL")
+    cursor.execute("SELECT COUNT(*) as count FROM Visits WHERE local_start_date IS NOT NULL")
     with_local_time = cursor.fetchone()['count']
     
     cursor.execute("""

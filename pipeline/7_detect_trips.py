@@ -527,6 +527,12 @@ def finalize_trip(conn, trip_visits, home_locations, trip_config):
     if trip_category is None:
         return None  # Too short to be a trip
     
+    # Extract local date/time from start and end timestamps
+    local_start_date = start_time.date()
+    local_start_time = start_time.time()
+    local_end_date = end_time.date()
+    local_end_time = end_time.time()
+    
     return {
         'start_time': start_time,
         'end_time': end_time,
@@ -534,7 +540,11 @@ def finalize_trip(conn, trip_visits, home_locations, trip_config):
         'trip_category': trip_category,
         'visit_ids': visit_ids,
         'location_ids': location_ids,
-        'distance_from_home_km': distance_from_home
+        'distance_from_home_km': distance_from_home,
+        'local_start_date': local_start_date,
+        'local_start_time': local_start_time,
+        'local_end_date': local_end_date,
+        'local_end_time': local_end_time
     }
 
 
@@ -689,16 +699,24 @@ def insert_trips_to_database(conn, trips):
                 INSERT INTO Trips (
                     start_time,
                     end_time,
+                    local_start_date,
+                    local_start_time,
+                    local_end_date,
+                    local_end_time,
                     trip_category,
                     cities,
                     primary_location_id,
                     display_name
-                ) VALUES (%s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (start_time, end_time) DO NOTHING
                 RETURNING id
             """, (
                 trip['start_time'],
                 trip['end_time'],
+                trip['local_start_date'],
+                trip['local_start_time'],
+                trip['local_end_date'],
+                trip['local_end_time'],
                 trip['trip_category'],
                 cities,
                 primary_location_id,

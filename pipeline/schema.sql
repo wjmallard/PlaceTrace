@@ -53,8 +53,10 @@ CREATE TABLE Visits (
     duration_minutes INTEGER,
     
     -- Local time representation (wall-clock time at visit location)
-    local_date DATE,                    -- Calendar date in visit's timezone
-    local_time TIME,                    -- Wall-clock time in visit's timezone
+    local_start_date DATE,              -- Calendar date when visit started (in visit's timezone)
+    local_start_time TIME,              -- Wall-clock time when visit started (in visit's timezone)
+    local_end_date DATE,                -- Calendar date when visit ended (in visit's timezone)
+    local_end_time TIME,                -- Wall-clock time when visit ended (in visit's timezone)
     
     -- Spatial data (full precision)
     location GEOGRAPHY(POINT, 4326) NOT NULL,
@@ -71,7 +73,7 @@ CREATE TABLE Visits (
 -- Indexes for Visits
 CREATE INDEX idx_visits_start_time ON Visits(start_time);
 CREATE INDEX idx_visits_end_time ON Visits(end_time);
-CREATE INDEX idx_visits_local_date ON Visits(local_date);
+CREATE INDEX idx_visits_local_start_date ON Visits(local_start_date);
 CREATE INDEX idx_visits_location ON Visits USING GIST(location);
 CREATE INDEX idx_visits_location_id ON Visits(location_id);
 CREATE INDEX idx_visits_visit_type ON Visits(visit_type);
@@ -89,8 +91,10 @@ CREATE TABLE Movements (
     duration_minutes INTEGER,
     
     -- Local time representation (wall-clock time at movement start location)
-    local_date DATE,                    -- Calendar date in movement's timezone
-    local_time TIME,                    -- Wall-clock time in movement's timezone
+    local_start_date DATE,              -- Calendar date when movement started (in start location's timezone)
+    local_start_time TIME,              -- Wall-clock time when movement started (in start location's timezone)
+    local_end_date DATE,                -- Calendar date when movement ended (in end location's timezone)
+    local_end_time TIME,                -- Wall-clock time when movement ended (in end location's timezone)
     
     -- Spatial data
     start_location GEOGRAPHY(POINT, 4326) NOT NULL,
@@ -120,7 +124,7 @@ CREATE TABLE Movements (
 -- Indexes for Movements
 CREATE INDEX idx_movements_start_time ON Movements(start_time);
 CREATE INDEX idx_movements_end_time ON Movements(end_time);
-CREATE INDEX idx_movements_local_date ON Movements(local_date);
+CREATE INDEX idx_movements_local_start_date ON Movements(local_start_date);
 CREATE INDEX idx_movements_activity_type ON Movements(activity_type) WHERE activity_type IS NOT NULL;
 CREATE INDEX idx_movements_source ON Movements(source);
 CREATE INDEX idx_movements_movement_type ON Movements(movement_type);
@@ -206,9 +210,15 @@ CREATE INDEX idx_photos_spatial ON Photos
 CREATE TABLE Trips (
     id BIGSERIAL PRIMARY KEY,
     
-    -- Temporal bounds
+    -- Temporal bounds (timezone-aware, moment in time)
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    
+    -- Local date/time representation (calendar dates and times at trip start/end locations)
+    local_start_date DATE,              -- Calendar date when trip started (in starting location's timezone)
+    local_start_time TIME,              -- Wall-clock time when trip started (in starting location's timezone)
+    local_end_date DATE,                -- Calendar date when trip ended (in ending location's timezone)
+    local_end_time TIME,                -- Wall-clock time when trip ended (in ending location's timezone)
     
     -- Trip classification
     trip_category TEXT NOT NULL,        -- 'day', 'short', 'long'
@@ -223,6 +233,7 @@ CREATE TABLE Trips (
 
 -- Indexes for Trips
 CREATE INDEX idx_trips_start_time ON Trips(start_time);
+CREATE INDEX idx_trips_local_start_date ON Trips(local_start_date);
 CREATE INDEX idx_trips_category ON Trips(trip_category);
 
 -- ============================================================================
