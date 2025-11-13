@@ -84,6 +84,12 @@ class Visit(db.Model):
     end_time = Column(DateTime(timezone=True), nullable=False)
     duration_minutes = Column(Integer)
     
+    # Local time representation
+    local_start_date = Column(db.Date)
+    local_start_time = Column(db.Time)
+    local_end_date = Column(db.Date)
+    local_end_time = Column(db.Time)
+    
     # Spatial data
     location = Column(Geography('POINT', srid=4326), nullable=False)
     location_id = Column(Integer, ForeignKey('locations.id'))
@@ -207,6 +213,12 @@ class Trip(db.Model):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     
+    # Local time representation
+    local_start_date = Column(db.Date)
+    local_start_time = Column(db.Time)
+    local_end_date = Column(db.Date)
+    local_end_time = Column(db.Time)
+    
     # Trip classification
     trip_category = Column(Text, nullable=False)
     
@@ -231,6 +243,12 @@ class Movement(db.Model):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     duration_minutes = Column(Integer)
+    
+    # Local time representation
+    local_start_date = Column(db.Date)
+    local_start_time = Column(db.Time)
+    local_end_date = Column(db.Date)
+    local_end_time = Column(db.Time)
     
     # Spatial data
     start_location = Column(Geography('POINT', srid=4326), nullable=False)

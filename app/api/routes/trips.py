@@ -62,36 +62,58 @@ def get_trips():
         # - Trip starts before range ends AND
         # - Trip ends after range starts
         if start_date and end_date:
-            # Parse ISO datetime strings
             try:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                # Check if dates are YYYY-MM-DD format (use local dates) or ISO timestamps (use UTC)
+                if len(start_date) == 10 and start_date.count('-') == 2:
+                    # YYYY-MM-DD format - use local dates
+                    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    query = query.where(
+                        Trip.local_start_date <= end_date_obj,
+                        Trip.local_end_date >= start_date_obj
+                    )
+                else:
+                    # ISO timestamp format - use UTC times
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    query = query.where(
+                        Trip.start_time < end_dt,
+                        Trip.end_time > start_dt
+                    )
             except ValueError:
-                return jsonify({'error': 'Invalid date format. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)', 'status': 400}), 400
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD or ISO 8601 format (e.g., 2024-03-01 or 2024-03-01T00:00:00Z)', 'status': 400}), 400
             
-            query = query.where(
-                Trip.start_time < end_dt,
-                Trip.end_time > start_dt
-            )
             filters['start_date'] = start_date
             filters['end_date'] = end_date
         elif start_date:
             # Any trip that ends after start_date
             try:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                if len(start_date) == 10 and start_date.count('-') == 2:
+                    # YYYY-MM-DD format - use local dates
+                    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                    query = query.where(Trip.local_end_date >= start_date_obj)
+                else:
+                    # ISO timestamp format
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    query = query.where(Trip.end_time > start_dt)
             except ValueError:
-                return jsonify({'error': 'Invalid date format. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)', 'status': 400}), 400
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD or ISO 8601 format', 'status': 400}), 400
             
-            query = query.where(Trip.end_time > start_dt)
             filters['start_date'] = start_date
         elif end_date:
             # Any trip that starts before end_date
             try:
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                if len(end_date) == 10 and end_date.count('-') == 2:
+                    # YYYY-MM-DD format - use local dates
+                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    query = query.where(Trip.local_start_date <= end_date_obj)
+                else:
+                    # ISO timestamp format
+                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    query = query.where(Trip.start_time < end_dt)
             except ValueError:
-                return jsonify({'error': 'Invalid date format. Use ISO 8601 format (e.g., 2024-03-01T00:00:00Z)', 'status': 400}), 400
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD or ISO 8601 format', 'status': 400}), 400
             
-            query = query.where(Trip.start_time < end_dt)
             filters['end_date'] = end_date
         
         # Order by start time descending (most recent first)
@@ -148,6 +170,10 @@ def get_trips():
                 'id': trip.id,
                 'start_time': trip.start_time.isoformat() if trip.start_time else None,
                 'end_time': trip.end_time.isoformat() if trip.end_time else None,
+                'local_start_date': trip.local_start_date.isoformat() if trip.local_start_date else None,
+                'local_start_time': trip.local_start_time.isoformat() if trip.local_start_time else None,
+                'local_end_date': trip.local_end_date.isoformat() if trip.local_end_date else None,
+                'local_end_time': trip.local_end_time.isoformat() if trip.local_end_time else None,
                 'category': trip.trip_category,
                 'display_name': display_name,
                 'visit_count': visit_counts.get(trip.id, 0),
@@ -240,6 +266,10 @@ def get_trip_detail(trip_id):
             'id': trip.id,
             'start_time': trip.start_time.isoformat() if trip.start_time else None,
             'end_time': trip.end_time.isoformat() if trip.end_time else None,
+            'local_start_date': trip.local_start_date.isoformat() if trip.local_start_date else None,
+            'local_start_time': trip.local_start_time.isoformat() if trip.local_start_time else None,
+            'local_end_date': trip.local_end_date.isoformat() if trip.local_end_date else None,
+            'local_end_time': trip.local_end_time.isoformat() if trip.local_end_time else None,
             'category': trip.trip_category,
             'display_name': display_name,
             'visit_count': len(visits_data),

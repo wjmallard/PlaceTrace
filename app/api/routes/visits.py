@@ -37,15 +37,21 @@ def get_visits():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Handle date parameter - convert YYYY-MM-DD to full day range
+        # Handle date parameter - convert YYYY-MM-DD to filter on local dates
         # This overwrites start_date/end_date if provided
         if date_param:
             try:
-                from datetime import timedelta, timezone
-                date_obj = datetime.strptime(date_param, '%Y-%m-%d')
-                # Overwrite with full day range in UTC
-                start_date = date_obj.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).isoformat()
-                end_date = date_obj.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc).isoformat()
+                from datetime import date as date_type
+                date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
+                # Filter: visit overlaps this date if local_start_date <= date AND local_end_date >= date
+                query = query.where(
+                    Visit.local_start_date <= date_obj,
+                    Visit.local_end_date >= date_obj
+                )
+                filters['date'] = date_param
+                # Clear start_date/end_date to avoid double filtering
+                start_date = None
+                end_date = None
             except ValueError:
                 return jsonify({
                     'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
@@ -78,26 +84,34 @@ def get_visits():
             except (ValueError, TypeError):
                 return jsonify({'error': 'Invalid bbox format: expected min_lat,min_lng,max_lat,max_lng', 'status': 400}), 400
         
-        # Date range filters
+        # Date range filters (use local dates for YYYY-MM-DD strings, UTC for ISO timestamps)
         if start_date:
             try:
-                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                query = query.where(Visit.start_time >= start_dt)
+                # If it looks like YYYY-MM-DD, use local_end_date
+                if len(start_date) == 10 and start_date.count('-') == 2:
+                    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                    query = query.where(Visit.local_end_date >= start_date_obj)
+                else:
+                    # ISO timestamp - use UTC start_time
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    query = query.where(Visit.start_time >= start_dt)
                 filters['start_date'] = start_date
             except (ValueError, AttributeError) as e:
                 return jsonify({'error': f'Invalid start_date format: {str(e)}', 'status': 400}), 400
         
         if end_date:
             try:
-                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                query = query.where(Visit.end_time <= end_dt)
+                # If it looks like YYYY-MM-DD, use local_start_date
+                if len(end_date) == 10 and end_date.count('-') == 2:
+                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    query = query.where(Visit.local_start_date <= end_date_obj)
+                else:
+                    # ISO timestamp - use UTC end_time
+                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                    query = query.where(Visit.end_time <= end_dt)
                 filters['end_date'] = end_date
             except (ValueError, AttributeError) as e:
                 return jsonify({'error': f'Invalid end_date format: {str(e)}', 'status': 400}), 400
-        
-        # Add date to filters if it was used
-        if date_param:
-            filters['date'] = date_param
         
         # Location filter
         if location_id:
@@ -153,6 +167,10 @@ def get_visits():
                 'start_time': visit.start_time.isoformat() if visit.start_time else None,
                 'end_time': visit.end_time.isoformat() if visit.end_time else None,
                 'duration_minutes': visit.duration_minutes,
+                'local_start_date': visit.local_start_date.isoformat() if visit.local_start_date else None,
+                'local_start_time': visit.local_start_time.isoformat() if visit.local_start_time else None,
+                'local_end_date': visit.local_end_date.isoformat() if visit.local_end_date else None,
+                'local_end_time': visit.local_end_time.isoformat() if visit.local_end_time else None,
                 'latitude': lat,
                 'longitude': lng,
                 'location_name': visit.location_name,

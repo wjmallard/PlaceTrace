@@ -45,11 +45,8 @@ def get_movements():
         
         # Parse and validate date
         try:
-            from datetime import timedelta, timezone
-            date_obj = datetime.strptime(date_param, '%Y-%m-%d')
-            # Set to full day range in UTC
-            start_dt = date_obj.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
-            end_dt = date_obj.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc)
+            date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
+            # Filter: movement overlaps this date if local_start_date <= date AND local_end_date >= date
         except ValueError:
             return jsonify({
                 'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
@@ -95,9 +92,11 @@ def get_movements():
             except (ValueError, TypeError):
                 return jsonify({'error': 'Invalid bbox format: expected min_lat,min_lng,max_lat,max_lng', 'status': 400}), 400
         
-        # Date range filters (from required date parameter)
-        query = query.where(Movement.start_time >= start_dt)
-        query = query.where(Movement.end_time <= end_dt)
+        # Date range filters (from required date parameter) - use local dates
+        query = query.where(
+            Movement.local_start_date <= date_obj,
+            Movement.local_end_date >= date_obj
+        )
         filters['date'] = date_param
         
         # Activity type filter
@@ -201,6 +200,10 @@ def get_movements():
                 'start_time': movement.start_time.isoformat() if movement.start_time else None,
                 'end_time': movement.end_time.isoformat() if movement.end_time else None,
                 'duration_minutes': movement.duration_minutes,
+                'local_start_date': movement.local_start_date.isoformat() if movement.local_start_date else None,
+                'local_start_time': movement.local_start_time.isoformat() if movement.local_start_time else None,
+                'local_end_date': movement.local_end_date.isoformat() if movement.local_end_date else None,
+                'local_end_time': movement.local_end_time.isoformat() if movement.local_end_time else None,
                 'start_latitude': start_lat,
                 'start_longitude': start_lng,
                 'end_latitude': end_lat,
@@ -296,6 +299,10 @@ def get_movement_detail(movement_id):
             'start_time': movement.start_time.isoformat() if movement.start_time else None,
             'end_time': movement.end_time.isoformat() if movement.end_time else None,
             'duration_minutes': movement.duration_minutes,
+            'local_start_date': movement.local_start_date.isoformat() if movement.local_start_date else None,
+            'local_start_time': movement.local_start_time.isoformat() if movement.local_start_time else None,
+            'local_end_date': movement.local_end_date.isoformat() if movement.local_end_date else None,
+            'local_end_time': movement.local_end_time.isoformat() if movement.local_end_time else None,
             'start_latitude': start_lat,
             'start_longitude': start_lng,
             'end_latitude': end_lat,
