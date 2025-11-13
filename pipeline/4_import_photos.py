@@ -260,23 +260,38 @@ def determine_photo_datetime(exif_dt, sidecar_data, latitude, longitude, file_pa
     return (None, 'exif_naive' if exif_dt else None)
 
 
-def extract_local_date_time(capture_datetime, exif_datetime):
+def extract_local_date_time(capture_datetime, exif_datetime, latitude=None, longitude=None):
     """
     Extract local date and time for database storage.
     
     Priority:
     1. If capture_datetime exists (timezone-aware), extract local date/time from it
+       - If it's in UTC and we have GPS coords, convert to local timezone first
     2. If only exif_datetime exists (naive), use that
     3. Otherwise return None, None
     
     Args:
         capture_datetime: Timezone-aware datetime or None
         exif_datetime: Naive datetime or None
+        latitude: GPS latitude or None (for timezone conversion)
+        longitude: GPS longitude or None (for timezone conversion)
     
     Returns: (local_date, local_time) tuple
     """
     if capture_datetime:
-        # Have timezone-aware datetime - extract local representation
+        # If datetime is in UTC and we have GPS, convert to local timezone
+        if capture_datetime.tzinfo == timezone.utc and latitude and longitude:
+            try:
+                tf = TimezoneFinder()
+                timezone_str = tf.timezone_at(lat=latitude, lng=longitude)
+                if timezone_str:
+                    local_tz = ZoneInfo(timezone_str)
+                    capture_datetime = capture_datetime.astimezone(local_tz)
+            except Exception:
+                # Couldn't convert - use UTC
+                pass
+        
+        # Extract local date/time (now in proper timezone)
         return capture_datetime.date(), capture_datetime.time()
     elif exif_datetime:
         # Have naive EXIF datetime - use as local time
@@ -410,7 +425,7 @@ def process_single_photo(args):
         )
         
         # Extract local date and time
-        local_date, local_time = extract_local_date_time(capture_datetime, exif_dt)
+        local_date, local_time = extract_local_date_time(capture_datetime, exif_dt, latitude, longitude)
         
         # Camera metadata (EXIF only - all might be None)
         camera_make = exif.get('camera_make') if exif else None
