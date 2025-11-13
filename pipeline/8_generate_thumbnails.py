@@ -4,14 +4,13 @@ Generate thumbnails for all photos in the database.
 This should be run after photo import to pre-generate thumbnails for the web interface.
 """
 
-import psycopg
-from psycopg.rows import dict_row
 from PIL import Image, ImageFile
 from pathlib import Path
-import yaml
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
-import multiprocessing
+
+# Import database module
+from db import get_main_connection, config
 
 # Allow loading of truncated images (corrupted files)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -26,34 +25,23 @@ except ImportError:
     print("WARNING: pillow-heif not installed. HEIC files will fail.")
     print("Install with: pip install pillow-heif")
 
-# Load config
-with open('config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-
 # Thumbnail settings
 THUMBNAIL_DIR = Path(config['source_data']['thumbnails_directory'])
 THUMBNAIL_DIR.mkdir(parents=True, exist_ok=True)
 THUMBNAIL_SIZE = (250, 250)
 NUM_WORKERS = config['processing']['num_workers']
 
-def get_db_connection():
-    """Get database connection"""
-    return psycopg.connect(
-        dbname=config['databases']['main'],
-        row_factory=dict_row
-    )
-
 def generate_thumbnail_worker(photo_tuple):
     """
     Generate thumbnail for a single photo (worker function for multiprocessing).
     
     Args:
-        photo_tuple: (photo_id, file_path, db_config)
+        photo_tuple: (photo_id, file_path)
     
     Returns:
         Tuple of (photo_id, thumbnail_path, success, error_info)
     """
-    photo_id, file_path, db_config = photo_tuple
+    photo_id, file_path = photo_tuple
     
     try:
         # Open original image
@@ -89,19 +77,20 @@ def main():
     print("THUMBNAIL GENERATION")
     print("=" * 80)
     
-    conn = get_db_connection()
+    conn = get_main_connection()
     
     # Get all photos without thumbnails
     print("\nQuerying photos without thumbnails...")
-    with conn.cursor() as cursor:
-        cursor.execute("""
-            SELECT id, file_path 
-            FROM photos 
-            WHERE thumbnail_path IS NULL 
-              AND file_path IS NOT NULL
-            ORDER BY id
-        """)
-        photos = cursor.fetchall()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, file_path 
+        FROM photos 
+        WHERE thumbnail_path IS NULL 
+          AND file_path IS NOT NULL
+        ORDER BY id
+    """)
+    photos = cursor.fetchall()
+    cursor.close()
     
     total_photos = len(photos)
     
@@ -117,9 +106,9 @@ def main():
     print(f"HEIC support: {'✓ Enabled' if HEIC_SUPPORT else '✗ Disabled (install pillow-heif)'}")
     print()
     
-    # Prepare work items (photo_id, file_path, db_config)
+    # Prepare work items (photo_id, file_path)
     work_items = [
-        (photo['id'], photo['file_path'], config['databases']['main'])
+        (photo['id'], photo['file_path'])
         for photo in photos
     ]
     
@@ -141,14 +130,13 @@ def main():
     
     # Update database with results
     print("\nUpdating database...")
+    cursor = conn.cursor()
     for photo_id, thumbnail_path, success, error_info in tqdm(results, desc="Writing to DB", unit="photo"):
         if success:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE photos SET thumbnail_path = %s WHERE id = %s",
-                    (thumbnail_path, photo_id)
-                )
-            conn.commit()
+            cursor.execute(
+                "UPDATE photos SET thumbnail_path = %s WHERE id = %s",
+                (thumbnail_path, photo_id)
+            )
             success_count += 1
         else:
             failed_count += 1
@@ -163,6 +151,8 @@ def main():
                 error_by_type[error_type] = error_by_type.get(error_type, 0) + 1
                 error_details.append(error_info)
     
+    conn.commit()
+    cursor.close()
     conn.close()
     
     # Summary
