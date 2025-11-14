@@ -81,12 +81,10 @@ function placeTraceApp() {
                 
                 // Add date range filter if active
                 if (this.dateRange.start) {
-                    params.append('start_date', new Date(this.dateRange.start).toISOString());
+                    params.append('start_date', this.dateRange.start);
                 }
                 if (this.dateRange.end) {
-                    const endDate = new Date(this.dateRange.end);
-                    endDate.setHours(23, 59, 59, 999);
-                    params.append('end_date', endDate.toISOString());
+                    params.append('end_date', this.dateRange.end);
                 }
                 
                 const response = await fetch(`/api/trips?${params}`);
@@ -113,12 +111,10 @@ function placeTraceApp() {
                 
                 // Add date range filter if active
                 if (this.dateRange.start) {
-                    params.append('start_date', new Date(this.dateRange.start).toISOString());
+                    params.append('start_date', this.dateRange.start);
                 }
                 if (this.dateRange.end) {
-                    const endDate = new Date(this.dateRange.end);
-                    endDate.setHours(23, 59, 59, 999);
-                    params.append('end_date', endDate.toISOString());
+                    params.append('end_date', this.dateRange.end);
                 }
                 
                 const response = await fetch(`/api/visits?${params}`);
