@@ -213,29 +213,47 @@ function placeTraceApp() {
                 // Check if this is the selected visit
                 const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
                 
-                // Determine colors based on photo count
+                // All markers are blue, photos get a gold center dot
                 const hasPhotos = visit.photo_count > 0;
-                let fillColor, borderColor;
                 
-                if (hasPhotos) {
-                    // Purple for visits with photos
-                    fillColor = '#9333EA';  // purple-600
-                    borderColor = '#6B21A8';  // purple-800
-                } else {
-                    // Blue for visits without photos
-                    fillColor = '#3B82F6';  // blue-500
-                    borderColor = '#1E40AF';  // blue-800
-                }
+                // Create custom marker with optional center dot
+                const size = 12;
+                const borderWidth = isSelected ? 3 : 1;
                 
-                const marker = L.circleMarker(
+                const markerHtml = `
+                    <div style="
+                        width: ${size}px;
+                        height: ${size}px;
+                        background-color: #3B82F6;
+                        border: ${borderWidth}px solid #1E40AF;
+                        border-radius: 50%;
+                        opacity: 0.9;
+                        position: relative;
+                    ">
+                        ${hasPhotos ? `
+                            <div style="
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%);
+                                width: 4px;
+                                height: 4px;
+                                background-color: #FDE047;
+                                border-radius: 50%;
+                            "></div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                const marker = L.marker(
                     [visit.latitude, visit.longitude],
                     {
-                        radius: 6,
-                        fillColor: fillColor,
-                        color: borderColor,
-                        weight: isSelected ? 3 : 1,  // Thick outline if selected
-                        opacity: 1,
-                        fillOpacity: 0.7
+                        icon: L.divIcon({
+                            html: markerHtml,
+                            className: '',
+                            iconSize: [size, size],
+                            iconAnchor: [size/2, size/2]
+                        })
                     }
                 );
                 
