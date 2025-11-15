@@ -43,8 +43,11 @@ function placeTraceApp() {
         // Initialize
         init() {
             this.initMap();
-            this.loadTrips();
-            this.loadRecentVisits();
+            // Wait for map to be ready before loading data
+            this.map.whenReady(() => {
+                this.loadTrips();
+                this.loadRecentVisits();
+            });
         },
         
         // Initialize Leaflet map
