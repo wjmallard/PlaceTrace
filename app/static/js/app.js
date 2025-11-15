@@ -77,6 +77,7 @@ function placeTraceApp() {
             // Add click handler for spatial filter
             this.map.on('click', (e) => {
                 this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
+                this.loadRecentVisits();
             });
             
             // Enable scroll wheel zoom after map is fully initialized
@@ -244,7 +245,11 @@ function placeTraceApp() {
                 this.visits.map(v => [v.latitude, v.longitude])
             );
             
-            this.map.fitBounds(bounds, { padding: [50, 50] });
+            // Disable animation to avoid popup animation conflicts
+            this.map.fitBounds(bounds, { 
+                padding: [50, 50],
+                animate: false
+            });
         },
         
         // Get trips for active tab
@@ -348,7 +353,7 @@ function placeTraceApp() {
             }
             
             // If date filter removed, clear it and reload
-            if (filterId === 'date') {
+            if (filterId === 'date-range') {
                 this.clearDateFilter();
             }
         },
@@ -358,24 +363,16 @@ function placeTraceApp() {
             this.spatialFilter.lat = lat;
             this.spatialFilter.lon = lon;
             
-            // Add visual indicator on map
+            // Remove old visual indicators
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
             }
             if (this.spatialFilterCircle) {
                 this.map.removeLayer(this.spatialFilterCircle);
             }
             
-            // Add marker at click point
-            this.spatialFilterMarker = L.marker([lat, lon], {
-                icon: L.divIcon({
-                    className: 'spatial-filter-marker',
-                    html: '<div style="background: #10B981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">📍</div>',
-                    iconSize: [24, 24]
-                })
-            }).addTo(this.map);
-            
-            // Add circle showing radius
+            // Add circle showing radius (no center marker - it covers the visit)
             this.spatialFilterCircle = L.circle([lat, lon], {
                 radius: this.spatialFilter.radius_km * 1000,  // Convert km to meters
                 color: '#10B981',
@@ -393,12 +390,7 @@ function placeTraceApp() {
                 data: { lat, lon, radius_km: this.spatialFilter.radius_km }
             });
             
-            // Reload visits with spatial filter
-            if (this.selectedTripId) {
-                this.loadTripVisits(this.selectedTripId);
-            } else {
-                this.loadRecentVisits();
-            }
+            // Note: Caller is responsible for calling loadRecentVisits()
         },
         
         // Clear spatial filter
@@ -457,12 +449,7 @@ function placeTraceApp() {
                     }
                 });
                 
-                // Reload visits with new radius
-                if (this.selectedTripId) {
-                    this.loadTripVisits(this.selectedTripId);
-                } else {
-                    this.loadRecentVisits();
-                }
+                // Note: Caller responsible for reloading visits
             }
         },
         
@@ -1007,6 +994,228 @@ function placeTraceApp() {
         clearSelectedVisit() {
             this.selectedVisit = null;
             this.renderMarkers();  // Re-render to update marker colors
+        },
+        
+        // Time filter: view single day
+        async viewDay(dateStr) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear spatial filter state (time and space are mutually exclusive)
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            // Remove spatial chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
+            
+            // Set date range to just this day
+            this.dateRange.start = dateStr;
+            this.dateRange.end = dateStr;
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date-range',
+                type: 'date',
+                emoji: '📅',
+                label: this.formatDateShort(dateStr)
+            });
+            
+            // Reload visits and trips (if trips panel is expanded)
+            if (this.showTripsSection) {
+                await this.loadTrips();
+            }
+            await this.loadRecentVisits();
+        },
+        
+        // Time filter: view week (±3 days)
+        async viewWeek(dateStr) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear spatial filter (time and space are mutually exclusive)
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            // Remove spatial chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
+            
+            // Calculate week: ±3 days
+            const date = new Date(dateStr);
+            const startDate = new Date(date);
+            startDate.setDate(startDate.getDate() - 3);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 3);
+            
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            
+            // Set date range
+            this.dateRange.start = startStr;
+            this.dateRange.end = endStr;
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date-range',
+                type: 'date',
+                emoji: '📅',
+                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
+            });
+            
+            // Reload visits and trips (if trips panel is expanded)
+            if (this.showTripsSection) {
+                await this.loadTrips();
+            }
+            await this.loadRecentVisits();
+        },
+        
+        // Time filter: view month (±15 days)
+        async viewMonth(dateStr) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear spatial filter (time and space are mutually exclusive)
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            // Remove spatial chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
+            
+            // Calculate month: ±15 days
+            const date = new Date(dateStr);
+            const startDate = new Date(date);
+            startDate.setDate(startDate.getDate() - 15);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 15);
+            
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            
+            // Set date range
+            this.dateRange.start = startStr;
+            this.dateRange.end = endStr;
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date-range',
+                type: 'date',
+                emoji: '📅',
+                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
+            });
+            
+            // Reload visits and trips (if trips panel is expanded)
+            if (this.showTripsSection) {
+                await this.loadTrips();
+            }
+            await this.loadRecentVisits();
+        },
+        
+        // Time filter: view full year
+        async viewYear(dateStr) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear spatial filter (time and space are mutually exclusive)
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            // Remove spatial chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
+            
+            // Get full year
+            const date = new Date(dateStr);
+            const year = date.getFullYear();
+            const startStr = `${year}-01-01`;
+            const endStr = `${year}-12-31`;
+            
+            // Set date range
+            this.dateRange.start = startStr;
+            this.dateRange.end = endStr;
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date-range',
+                type: 'date',
+                emoji: '📅',
+                label: `${year}`
+            });
+            
+            // Reload visits and trips (if trips panel is expanded)
+            if (this.showTripsSection) {
+                await this.loadTrips();
+            }
+            await this.loadRecentVisits();
+        },
+        
+        // Space filter: view visits within radius
+        async viewSpace(lat, lon, radius_km) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear date filter state (time and space are mutually exclusive)
+            this.dateRange.start = null;
+            this.dateRange.end = null;
+            // Remove date chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'date-range');
+            
+            // Set radius first, then call setSpatialFilter
+            this.spatialFilter.radius_km = radius_km;
+            this.setSpatialFilter(lat, lon);
+            
+            // Wait for visits to load before fitting bounds
+            await this.loadRecentVisits();
+        },
+        
+        // Clear all filters
+        clearAllFilters() {
+            // Clear trip selection
+            this.selectedTripId = null;
+            
+            // Clear spatial filter
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            
+            // Clear date filter
+            this.dateRange.start = null;
+            this.dateRange.end = null;
+            
+            // Clear all filter chips
+            this.activeFilters = [];
         }
     };
 }
