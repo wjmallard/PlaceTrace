@@ -80,6 +80,14 @@ function placeTraceApp() {
                 this.loadRecentVisits();
             });
             
+            // Add moveend listener to reload visits based on visible bounds
+            this.map.on('moveend', () => {
+                // Only reload if no filters are active
+                if (!this.selectedTripId && !this.spatialFilter.lat && !this.dateRange.start) {
+                    this.loadRecentVisits();
+                }
+            });
+            
             // Enable scroll wheel zoom after map is fully initialized
             this.map.whenReady(() => {
                 this.map.scrollWheelZoom.enable();
@@ -120,13 +128,18 @@ function placeTraceApp() {
                     params.append('lon', this.spatialFilter.lon);
                     params.append('radius_km', this.spatialFilter.radius_km);
                 }
-                
                 // Add date range filter if active
-                if (this.dateRange.start) {
+                else if (this.dateRange.start) {
                     params.append('start_date', this.dateRange.start);
+                    if (this.dateRange.end) {
+                        params.append('end_date', this.dateRange.end);
+                    }
                 }
-                if (this.dateRange.end) {
-                    params.append('end_date', this.dateRange.end);
+                // No filters active - use map bounds
+                else {
+                    const bounds = this.map.getBounds();
+                    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+                    params.append('bbox', bbox);
                 }
                 
                 const response = await fetch(`/api/visits?${params}`);
@@ -240,6 +253,11 @@ function placeTraceApp() {
         // Fit map bounds to show all visits
         fitMapToVisits() {
             if (this.visits.length === 0) return;
+            
+            // Only fit bounds when we have filters active
+            // (Don't fit when using bbox - that would cause infinite loop)
+            const hasFilters = this.selectedTripId || this.spatialFilter.lat !== null || this.dateRange.start;
+            if (!hasFilters) return;
             
             const bounds = L.latLngBounds(
                 this.visits.map(v => [v.latitude, v.longitude])
