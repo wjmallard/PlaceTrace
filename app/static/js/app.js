@@ -213,15 +213,29 @@ function placeTraceApp() {
                 // Check if this is the selected visit
                 const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
                 
+                // Determine colors based on photo count
+                const hasPhotos = visit.photo_count > 0;
+                let fillColor, borderColor;
+                
+                if (hasPhotos) {
+                    // Purple for visits with photos
+                    fillColor = '#9333EA';  // purple-600
+                    borderColor = '#6B21A8';  // purple-800
+                } else {
+                    // Blue for visits without photos
+                    fillColor = '#3B82F6';  // blue-500
+                    borderColor = '#1E40AF';  // blue-800
+                }
+                
                 const marker = L.circleMarker(
                     [visit.latitude, visit.longitude],
                     {
-                        radius: isSelected ? 8 : 6,
-                        fillColor: isSelected ? '#EF4444' : '#3B82F6',  // red-500 if selected, blue-500 otherwise
-                        color: isSelected ? '#991B1B' : '#1E40AF',      // red-900 if selected, blue-800 otherwise
-                        weight: isSelected ? 2 : 1,
+                        radius: 6,
+                        fillColor: fillColor,
+                        color: borderColor,
+                        weight: isSelected ? 3 : 1,  // Thick outline if selected
                         opacity: 1,
-                        fillOpacity: isSelected ? 0.9 : 0.7
+                        fillOpacity: 0.7
                     }
                 );
                 
