@@ -751,10 +751,39 @@ function placeTraceApp() {
             if (!date || !time) return '';
             
             const dateObj = new Date(date + 'T' + time);
+            
+            // Format date part
+            const datePart = dateObj.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            // Format time part
+            const timePart = dateObj.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+            
+            return `${datePart} • ${timePart}`;
+        },
+        
+        formatLocalDate(date, time) {
+            // Format just the date part
+            if (!date || !time) return '';
+            const dateObj = new Date(date + 'T' + time);
             return dateObj.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
-                year: 'numeric',
+                year: 'numeric'
+            });
+        },
+        
+        formatLocalTime(date, time) {
+            // Format just the time part
+            if (!date || !time) return '';
+            const dateObj = new Date(date + 'T' + time);
+            return dateObj.toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit'
             });
