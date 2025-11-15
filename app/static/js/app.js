@@ -48,8 +48,10 @@ function placeTraceApp() {
         
         // Initialize Leaflet map
         initMap() {
-            // Create map centered on Palo Alto
-            this.map = L.map('map').setView([37.4419, -122.1430], 10);
+            // Create map centered on Palo Alto (disable scroll wheel zoom during init)
+            this.map = L.map('map', {
+                scrollWheelZoom: false
+            }).setView([37.4419, -122.1430], 10);
             
             // Add Esri World Street Map tiles
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -71,6 +73,11 @@ function placeTraceApp() {
             // Add click handler for spatial filter
             this.map.on('click', (e) => {
                 this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
+            });
+            
+            // Enable scroll wheel zoom after map is fully initialized
+            this.map.whenReady(() => {
+                this.map.scrollWheelZoom.enable();
             });
         },
         
