@@ -237,20 +237,23 @@
                                 <button
                                     @click="activeTripTab = 'day'"
                                     :class="activeTripTab === 'day' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm">
-                                    🚗 Day
+                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm flex flex-col items-center">
+                                    <span>Day Trip</span>
+                                    <span class="mt-1">🚗 <span class="inline-block bg-gray-100 text-red-700 text-xs px-1 rounded" x-text="tripCounts.day"></span></span>
                                 </button>
                                 <button
                                     @click="activeTripTab = 'short'"
                                     :class="activeTripTab === 'short' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm">
-                                    ✈️ Short
+                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm flex flex-col items-center">
+                                    <span>Short Trip</span>
+                                    <span class="mt-1">✈️ <span class="inline-block bg-gray-100 text-red-700 text-xs px-1 rounded" x-text="tripCounts.short"></span></span>
                                 </button>
                                 <button
                                     @click="activeTripTab = 'long'"
                                     :class="activeTripTab === 'long' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
-                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm">
-                                    🌍 Long
+                                    class="flex-1 py-2 px-1 text-center border-b-2 font-medium text-sm flex flex-col items-center">
+                                    <span>Long Trip</span>
+                                    <span class="mt-1">🌍 <span class="inline-block bg-gray-100 text-red-700 text-xs px-1 rounded" x-text="tripCounts.long"></span></span>
                                 </button>
                             </div>
                             

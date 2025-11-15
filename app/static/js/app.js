@@ -264,6 +264,15 @@ function placeTraceApp() {
             return this.trips.filter(trip => trip.category === targetCategory);
         },
         
+        // Get trip counts for each category
+        get tripCounts() {
+            return {
+                day: this.trips.filter(t => t.category === 'Day Trip').length,
+                short: this.trips.filter(t => t.category === 'Short Trip').length,
+                long: this.trips.filter(t => t.category === 'Long Trip').length
+            };
+        },
+        
         // Group trips by year
         get tripsByYear() {
             const grouped = {};
