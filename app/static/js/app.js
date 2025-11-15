@@ -37,8 +37,8 @@ function placeTraceApp() {
         showMovement: false,
         movements: [],
         movementLayer: null,
-        focusModeEnabled: true,  // Default: focus on selected day
-        savedVisitState: null,   // Store visits to restore when focus disabled
+        showAllNearbyVisits: false,  // Default: show only selected day visits
+        savedVisitState: null,   // Store visits to restore when showing all nearby
         
         // Initialize
         init() {
@@ -136,8 +136,8 @@ function placeTraceApp() {
                         params.append('end_date', this.dateRange.end);
                     }
                 }
-                // Movement tracks with focus mode - don't reload, visits are already filtered
-                else if (this.showMovement && this.focusModeEnabled) {
+                // Movement tracks without showing all nearby - don't reload, visits are already filtered
+                else if (this.showMovement && !this.showAllNearbyVisits) {
                     this.loading = false;
                     return;
                 }
@@ -817,8 +817,8 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                // Save current visits before first load (if focus mode enabled)
-                if (this.focusModeEnabled && !this.savedVisitState) {
+                // Save current visits before first load (if showing only this day)
+                if (!this.showAllNearbyVisits && !this.savedVisitState) {
                     this.savedVisitState = [...this.visits];
                 }
                 
@@ -837,8 +837,8 @@ function placeTraceApp() {
                 // Render movement tracks with day visits on timeline
                 this.renderMovementsWithVisits(dayVisits);
                 
-                // If focus mode enabled, update main markers to show only this day
-                if (this.focusModeEnabled) {
+                // If NOT showing all nearby, update main markers to show only this day
+                if (!this.showAllNearbyVisits) {
                     this.visits = dayVisits;
                     this.renderVisits();
                 }
@@ -1058,18 +1058,18 @@ function placeTraceApp() {
             }
         },
         
-        // Toggle focus mode
-        async toggleFocusMode() {
-            if (this.focusModeEnabled) {
-                // Enabling focus - show only day visits
+        // Toggle show all nearby visits
+        async toggleShowAllNearbyVisits() {
+            if (this.showAllNearbyVisits) {
+                // Enabling show all - load visits in current viewport
+                this.savedVisitState = null;
+                await this.loadRecentVisits();
+            } else {
+                // Disabling show all - show only day visits
                 if (this.showMovement && this.selectedDay) {
                     // Re-load movements to get day visits
                     await this.loadMovements();
                 }
-            } else {
-                // Disabling focus - load visits in current viewport
-                this.savedVisitState = null;
-                await this.loadRecentVisits();
             }
         },
         
