@@ -68,7 +68,8 @@ function placeTraceApp() {
                 maxClusterRadius: 50,
                 spiderfyOnMaxZoom: true,
                 showCoverageOnHover: false,
-                zoomToBoundsOnClick: true
+                zoomToBoundsOnClick: true,
+                animate: false  // Disable all animations to prevent conflicts
             }).addTo(this.map);
             
             // Create movement layer (below markers)
