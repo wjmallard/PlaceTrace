@@ -11,6 +11,7 @@ function placeTraceApp() {
         trips: [],
         activeTripTab: 'day',
         selectedTripId: null,
+        selectedVisit: null,  // Currently selected visit
         activeFilters: [],
         spatialFilter: {
             lat: null,
@@ -186,15 +187,18 @@ function placeTraceApp() {
             
             // Add marker for each visit
             this.visits.forEach(visit => {
+                // Check if this is the selected visit
+                const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
+                
                 const marker = L.circleMarker(
                     [visit.latitude, visit.longitude],
                     {
-                        radius: 6,
-                        fillColor: '#3B82F6',  // blue-500
-                        color: '#1E40AF',       // blue-800
-                        weight: 1,
+                        radius: isSelected ? 8 : 6,
+                        fillColor: isSelected ? '#EF4444' : '#3B82F6',  // red-500 if selected, blue-500 otherwise
+                        color: isSelected ? '#991B1B' : '#1E40AF',      // red-900 if selected, blue-800 otherwise
+                        weight: isSelected ? 2 : 1,
                         opacity: 1,
-                        fillOpacity: 0.7
+                        fillOpacity: isSelected ? 0.9 : 0.7
                     }
                 );
                 
@@ -214,9 +218,10 @@ function placeTraceApp() {
                 
                 marker.bindPopup(popupContent);
                 
-                // Click handler (Phase 3 will add visit selection)
+                // Click handler - select this visit and re-render to update colors
                 marker.on('click', () => {
-                    console.log('Visit clicked:', visit.id);
+                    this.selectedVisit = visit;
+                    this.renderMarkers();  // Re-render to update marker colors
                 });
                 
                 marker.addTo(this.markerLayer);
@@ -993,6 +998,12 @@ function placeTraceApp() {
             date.setDate(date.getDate() + 1);
             this.selectedDay = date.toISOString().split('T')[0];
             await this.loadMovements();
+        },
+        
+        // Clear selected visit
+        clearSelectedVisit() {
+            this.selectedVisit = null;
+            this.renderMarkers();  // Re-render to update marker colors
         }
     };
 }
