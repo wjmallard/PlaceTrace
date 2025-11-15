@@ -1019,9 +1019,17 @@ function placeTraceApp() {
         
         // Toggle movement display
         async toggleMovement() {
-            if (this.showMovement && this.selectedDay) {
-                // Turning ON tracks - loadMovements handles everything
-                await this.loadMovements();
+            if (this.showMovement) {
+                // Turning ON tracks
+                // If a visit is selected but no day is set, use the visit's date
+                if (this.selectedVisit && !this.selectedDay) {
+                    this.selectedDay = this.selectedVisit.local_start_date;
+                }
+                
+                // Load movements if we have a day
+                if (this.selectedDay) {
+                    await this.loadMovements();
+                }
             } else {
                 // Turning OFF tracks
                 this.clearMovementLayer();
