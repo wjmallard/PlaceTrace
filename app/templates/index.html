@@ -46,35 +46,31 @@
                         </div>
                         
                         <!-- Time Filters -->
-                        <div class="mb-2">
-                            <div class="text-xs font-medium text-gray-700 mb-1">Time:</div>
-                            <div class="flex gap-1 text-xs">
-                                <button @click="viewDay(selectedVisit.local_start_date)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">Day</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="view3Day(selectedVisit.local_start_date)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">3 Day</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewWeek(selectedVisit.local_start_date)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">Week</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewMonth(selectedVisit.local_start_date)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">Month</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewYear(selectedVisit.local_start_date)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">Year</button>
-                            </div>
+                        <div class="mb-2 text-xs">
+                            <span class="font-medium text-gray-700">Time:</span>
+                            <a href="#" @click.prevent="viewDay(selectedVisit.local_start_date)" class="text-blue-600 hover:underline ml-1">Day</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="view3Day(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">3 Day</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewWeek(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Week</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewMonth(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Month</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewYear(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Year</a>
                         </div>
                         
                         <!-- Space Filters -->
-                        <div>
-                            <div class="text-xs font-medium text-gray-700 mb-1">Space:</div>
-                            <div class="flex gap-1 text-xs">
-                                <button @click="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 1)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">1km</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 5)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">5km</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 10)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">10km</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 25)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">25km</button>
-                                <span class="text-gray-400">•</span>
-                                <button @click="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 100)" class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">100km</button>
-                            </div>
+                        <div class="text-xs">
+                            <span class="font-medium text-gray-700">Space:</span>
+                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 1)" class="text-blue-600 hover:underline ml-1">1km</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 5)" class="text-blue-600 hover:underline">5km</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 10)" class="text-blue-600 hover:underline">10km</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 25)" class="text-blue-600 hover:underline">25km</a>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 100)" class="text-blue-600 hover:underline">100km</a>
                         </div>
                     </div>
                 </template>
