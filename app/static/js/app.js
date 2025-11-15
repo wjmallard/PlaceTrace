@@ -1034,6 +1034,54 @@ function placeTraceApp() {
             await this.loadRecentVisits();
         },
         
+        // Time filter: view 3 days (±1 day)
+        async view3Day(dateStr) {
+            // Close any open popup first
+            this.map.closePopup();
+            
+            // Clear spatial filter state (time and space are mutually exclusive)
+            this.spatialFilter.lat = null;
+            this.spatialFilter.lon = null;
+            if (this.spatialFilterMarker) {
+                this.map.removeLayer(this.spatialFilterMarker);
+                this.spatialFilterMarker = null;
+            }
+            if (this.spatialFilterCircle) {
+                this.map.removeLayer(this.spatialFilterCircle);
+                this.spatialFilterCircle = null;
+            }
+            // Remove spatial chip from UI
+            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
+            
+            // Calculate 3 days: ±1 day
+            const date = new Date(dateStr);
+            const startDate = new Date(date);
+            startDate.setDate(startDate.getDate() - 1);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 1);
+            
+            const startStr = startDate.toISOString().split('T')[0];
+            const endStr = endDate.toISOString().split('T')[0];
+            
+            // Set date range
+            this.dateRange.start = startStr;
+            this.dateRange.end = endStr;
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date-range',
+                type: 'date',
+                emoji: '📅',
+                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
+            });
+            
+            // Reload visits and trips (if trips panel is expanded)
+            if (this.showTripsSection) {
+                await this.loadTrips();
+            }
+            await this.loadRecentVisits();
+        },
+        
         // Time filter: view week (±3 days)
         async viewWeek(dateStr) {
             // Close any open popup first
