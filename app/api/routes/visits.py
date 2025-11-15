@@ -42,27 +42,6 @@ def get_visits():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Handle date parameter - convert YYYY-MM-DD to filter on local dates
-        # This overwrites start_date/end_date if provided
-        if date_param:
-            try:
-                from datetime import date as date_type
-                date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
-                # Filter: visit overlaps this date if local_start_date <= date AND local_end_date >= date
-                query = query.where(
-                    Visit.local_start_date <= date_obj,
-                    Visit.local_end_date >= date_obj
-                )
-                filters['date'] = date_param
-                # Clear start_date/end_date to avoid double filtering
-                start_date = None
-                end_date = None
-            except ValueError:
-                return jsonify({
-                    'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
-                    'status': 400
-                }), 400
-        
         location_id = request.args.get('location_id', type=int)
         trip_id = request.args.get('trip_id', type=int)
         limit = request.args.get('limit', type=int, default=1000)
@@ -78,6 +57,26 @@ def get_visits():
         )
         
         filters = {}
+        
+        # Handle date parameter - convert YYYY-MM-DD to filter on local dates
+        # This overwrites start_date/end_date if provided
+        if date_param:
+            try:
+                date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
+                # Filter: visit overlaps this date if local_start_date <= date AND local_end_date >= date
+                query = query.where(
+                    Visit.local_start_date <= date_obj,
+                    Visit.local_end_date >= date_obj
+                )
+                filters['date'] = date_param
+                # Clear start_date/end_date to avoid double filtering
+                start_date = None
+                end_date = None
+            except ValueError:
+                return jsonify({
+                    'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
+                    'status': 400
+                }), 400
         
         # Bounding box filter
         if bbox:
