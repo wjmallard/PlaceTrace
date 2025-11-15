@@ -6,6 +6,7 @@ GET /api/visits - List visits with filtering
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func, and_
 from datetime import datetime
+from geoalchemy2 import Geography
 from api.models import Visit, Photo
 from api.database import db
 
@@ -20,6 +21,7 @@ def get_visits():
     Query parameters:
         - date: Single date (YYYY-MM-DD) - convenient shorthand for full day
         - bbox: Bounding box as 'min_lat,min_lng,max_lat,max_lng'
+        - lat, lon, radius_km: Radius-based spatial filter (alternative to bbox)
         - start_date: ISO datetime (inclusive) - ignored if date is provided
         - end_date: ISO datetime (inclusive) - ignored if date is provided
         - location_id: Filter by location ID
@@ -34,6 +36,9 @@ def get_visits():
         # Parse query parameters
         date_param = request.args.get('date')
         bbox = request.args.get('bbox')
+        lat = request.args.get('lat', type=float)
+        lon = request.args.get('lon', type=float)
+        radius_km = request.args.get('radius_km', type=float)
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
@@ -83,6 +88,20 @@ def get_visits():
                 filters['bbox'] = bbox
             except (ValueError, TypeError):
                 return jsonify({'error': 'Invalid bbox format: expected min_lat,min_lng,max_lat,max_lng', 'status': 400}), 400
+        
+        # Radius-based spatial filter (alternative to bbox)
+        if lat is not None and lon is not None and radius_km is not None:
+            # Create a geography point from lat/lon
+            center_point = func.ST_SetSRID(func.ST_MakePoint(lon, lat), 4326)
+            # ST_DWithin with Geography type uses spherical distance (meters)
+            query = query.where(
+                func.ST_DWithin(
+                    Visit.location,  # Already a Geography type
+                    func.cast(center_point, Geography),  # Cast to Geography
+                    radius_km * 1000  # Convert km to meters
+                )
+            )
+            filters['spatial'] = f'{lat},{lon} within {radius_km}km'
         
         # Date range filters (use local dates for YYYY-MM-DD strings, UTC for ISO timestamps)
         if start_date:
