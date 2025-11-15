@@ -82,8 +82,8 @@ function placeTraceApp() {
             
             // Add moveend listener to reload visits based on visible bounds
             this.map.on('moveend', () => {
-                // Only reload if no filters are active
-                if (!this.selectedTripId && !this.spatialFilter.lat && !this.dateRange.start) {
+                // Only reload if no filters are active AND movement tracks are not active
+                if (!this.selectedTripId && !this.spatialFilter.lat && !this.dateRange.start && !this.showMovement) {
                     this.loadRecentVisits();
                 }
             });
@@ -134,6 +134,11 @@ function placeTraceApp() {
                     if (this.dateRange.end) {
                         params.append('end_date', this.dateRange.end);
                     }
+                }
+                // Movement tracks with focus mode - don't reload, visits are already filtered
+                else if (this.showMovement && this.focusModeEnabled) {
+                    this.loading = false;
+                    return;
                 }
                 // No filters active - use map bounds
                 else {
@@ -954,7 +959,10 @@ function placeTraceApp() {
             
             // Fit map to all bounds
             if (bounds.length > 0) {
-                this.map.fitBounds(L.latLngBounds(bounds), { padding: [50, 50] });
+                this.map.fitBounds(L.latLngBounds(bounds), { 
+                    padding: [50, 50],
+                    animate: false
+                });
             }
         },
         
@@ -974,29 +982,25 @@ function placeTraceApp() {
                 // Turning OFF tracks
                 this.clearMovementLayer();
                 
-                // Restore previous visits if focus was active
-                if (this.savedVisitState) {
-                    this.visits = this.savedVisitState;
-                    this.savedVisitState = null;
-                    this.renderVisits();
-                }
+                // Clear saved state and reload visits for current viewport
+                this.savedVisitState = null;
+                await this.loadRecentVisits();
             }
         },
         
         // Toggle focus mode
-        toggleFocusMode() {
+        async toggleFocusMode() {
             if (this.focusModeEnabled) {
-                // Enabling focus - swap visits
-                const temp = this.visits;
-                this.visits = this.savedVisitState || this.visits;
-                this.savedVisitState = temp;
+                // Enabling focus - show only day visits
+                if (this.showMovement && this.selectedDay) {
+                    // Re-load movements to get day visits
+                    await this.loadMovements();
+                }
             } else {
-                // Disabling focus - swap back
-                const temp = this.visits;
-                this.visits = this.savedVisitState;
-                this.savedVisitState = temp;
+                // Disabling focus - load visits in current viewport
+                this.savedVisitState = null;
+                await this.loadRecentVisits();
             }
-            this.renderVisits();
         },
         
         // Navigate to previous day
