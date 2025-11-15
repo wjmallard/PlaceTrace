@@ -30,12 +30,13 @@
             </div>
             
             <!-- Selected Visit Panel -->
-            <div x-show="selectedVisit" class="p-4 border-b border-gray-200 bg-green-50">
+            <div class="p-4 border-b border-gray-200 bg-green-50">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-xs font-semibold text-gray-700 uppercase">Selected Visit</h3>
-                    <button @click="clearSelectedVisit()" class="text-xs text-gray-600 hover:text-gray-800">Clear</button>
+                    <button x-show="selectedVisit" @click="clearSelectedVisit()" class="text-xs text-gray-600 hover:text-gray-800">Clear</button>
                 </div>
                 
+                <!-- Visit details when selected -->
                 <template x-if="selectedVisit">
                     <div>
                         <div class="font-semibold text-sm text-gray-900 mb-1" x-text="selectedVisit.location_name"></div>
@@ -78,6 +79,13 @@
                             <span class="text-gray-400 mx-1">•</span>
                             <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 100)" class="text-blue-600 hover:underline">100km</a>
                         </div>
+                    </div>
+                </template>
+                
+                <!-- Placeholder when no visit selected -->
+                <template x-if="!selectedVisit">
+                    <div class="text-xs text-gray-500 italic">
+                        Click a visit on the map to view details
                     </div>
                 </template>
             </div>
