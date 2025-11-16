@@ -70,6 +70,11 @@ function placeTraceApp() {
             start: null,
             end: null
         },
+        timeFilterEnabled: false,
+        startDate: '',
+        endDate: '',
+        lastValidStartDate: '',
+        lastValidEndDate: '',
         dateText: '',
         endDateText: '',
         showRadiusSection: false,
@@ -567,6 +572,90 @@ function placeTraceApp() {
         },
         
         // Parse date text input
+        // Handle time filter enable/disable
+        toggleTimeFilter() {
+            if (!this.timeFilterEnabled) {
+                // Disabling - clear dates and reload only if filter was active
+                const wasActive = this.dateRange.start !== null;
+                
+                this.startDate = '';
+                this.endDate = '';
+                this.lastValidStartDate = '';
+                this.lastValidEndDate = '';
+                
+                if (wasActive) {
+                    this.clearDateFilter();
+                }
+            }
+            // Enabling - just enable the fields, don't apply filter yet
+        },
+        
+        // Handle start date change
+        onStartDateChange() {
+            if (!this.startDate) {
+                return;
+            }
+            
+            // Valid start date entered for first time or changed
+            this.lastValidStartDate = this.startDate;
+            
+            // If end is empty or less than start, set end = start
+            if (!this.endDate || this.endDate < this.startDate) {
+                this.endDate = this.startDate;
+                this.lastValidEndDate = this.endDate;
+            }
+            
+            // Apply the filter
+            this.applySimpleDateFilter();
+        },
+        
+        // Handle end date change
+        onEndDateChange() {
+            if (!this.endDate) {
+                return;
+            }
+            
+            // If end < start, set end = start
+            if (this.endDate < this.startDate) {
+                this.endDate = this.startDate;
+            }
+            
+            this.lastValidEndDate = this.endDate;
+            
+            // Apply the filter
+            this.applySimpleDateFilter();
+        },
+        
+        // Apply simple date filter (no parsing, just use the date inputs directly)
+        applySimpleDateFilter() {
+            if (!this.startDate || !this.endDate) {
+                return;
+            }
+            
+            this.dateRange.start = this.startDate;
+            this.dateRange.end = this.endDate;
+            
+            // Build filter chip label
+            const label = this.formatDateRangeChip();
+            
+            // Add filter chip
+            this.addFilter({
+                id: 'date',
+                type: 'date',
+                emoji: '📅',
+                label: label.replace('📅 ', ''),
+                data: { start: this.dateRange.start, end: this.dateRange.end }
+            });
+            
+            // Reload trips and visits with date filter
+            this.loadTrips();
+            if (this.selectedTripId) {
+                this.loadTripVisits(this.selectedTripId);
+            } else {
+                this.loadRecentVisits();
+            }
+        },
+        
         parseDate() {
             if (!this.dateText.trim()) return;
             
@@ -647,11 +736,14 @@ function placeTraceApp() {
         setPastWeek() {
             const now = new Date();
             const past = new Date(now - 7*24*60*60*1000);
-            this.dateText = past.toISOString().split('T')[0];
-            this.endDateText = now.toISOString().split('T')[0];
-            this.parseDate();
-            this.parseEndDate();
-            this.applyDateFilter();
+            
+            this.timeFilterEnabled = true;
+            this.startDate = past.toISOString().split('T')[0];
+            this.endDate = now.toISOString().split('T')[0];
+            this.lastValidStartDate = this.startDate;
+            this.lastValidEndDate = this.endDate;
+            
+            this.applySimpleDateFilter();
         },
         
         // Quick preset: Past month
@@ -659,11 +751,14 @@ function placeTraceApp() {
             const now = new Date();
             const past = new Date(now);
             past.setMonth(past.getMonth() - 1);
-            this.dateText = past.toISOString().split('T')[0];
-            this.endDateText = now.toISOString().split('T')[0];
-            this.parseDate();
-            this.parseEndDate();
-            this.applyDateFilter();
+            
+            this.timeFilterEnabled = true;
+            this.startDate = past.toISOString().split('T')[0];
+            this.endDate = now.toISOString().split('T')[0];
+            this.lastValidStartDate = this.startDate;
+            this.lastValidEndDate = this.endDate;
+            
+            this.applySimpleDateFilter();
         },
         
         // Quick preset: Past year
@@ -671,44 +766,14 @@ function placeTraceApp() {
             const now = new Date();
             const past = new Date(now);
             past.setFullYear(past.getFullYear() - 1);
-            this.dateText = past.toISOString().split('T')[0];
-            this.endDateText = now.toISOString().split('T')[0];
-            this.parseDate();
-            this.parseEndDate();
-            this.applyDateFilter();
-        },
-        
-        // Apply date range filter
-        applyDateFilter() {
-            if (!this.dateText) return;
             
-            // Parse dates if not already parsed
-            this.parseDate();
-            if (this.enableRange && this.endDateText) {
-                this.parseEndDate();
-            }
+            this.timeFilterEnabled = true;
+            this.startDate = past.toISOString().split('T')[0];
+            this.endDate = now.toISOString().split('T')[0];
+            this.lastValidStartDate = this.startDate;
+            this.lastValidEndDate = this.endDate;
             
-            if (!this.dateRange.start || !this.dateRange.end) return;
-            
-            // Build filter chip label
-            const label = this.formatDateRangeChip();
-            
-            // Add filter chip
-            this.addFilter({
-                id: 'date',
-                type: 'date',
-                emoji: '📅',
-                label: label.replace('📅 ', ''),
-                data: { start: this.dateRange.start, end: this.dateRange.end }
-            });
-            
-            // Reload trips and visits with date filter
-            this.loadTrips();
-            if (this.selectedTripId) {
-                this.loadTripVisits(this.selectedTripId);
-            } else {
-                this.loadRecentVisits();
-            }
+            this.applySimpleDateFilter();
         },
         
         // Format date range for chip display
@@ -741,6 +806,13 @@ function placeTraceApp() {
             this.dateRange.end = null;
             this.dateText = '';
             this.endDateText = '';
+            this.startDate = '';
+            this.endDate = '';
+            this.lastValidStartDate = '';
+            this.lastValidEndDate = '';
+            
+            // Remove date filter chip
+            this.removeFilter('date');
             
             // Reload trips without date filter
             this.loadTrips();

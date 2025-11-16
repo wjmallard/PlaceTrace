@@ -169,33 +169,38 @@
                             <span class="text-gray-600 font-bold" x-text="showDateFilter ? '−' : '+'"></span>
                         </button>
                         <div x-show="showDateFilter" x-collapse class="mt-2 p-4 bg-gray-50 rounded">
-                            <!-- Primary date input -->
-                            <div class="mb-2">
-                                <label class="text-xs text-gray-600 block mb-1">
-                                    Start <span class="text-gray-400">(YYYY, YYYY-MM, or YYYY-MM-DD)</span>
-                                </label>
-                                <input type="text" 
-                                       placeholder="2024-03 or 2024-03-15"
-                                       x-model="dateText"
-                                       @blur="parseDate()"
-                                       @keydown.enter="applyDateFilter()"
-                                       class="w-full p-2 text-sm border border-gray-300 rounded font-mono">
-                            </div>
-                            
-                            <!-- End date (optional) -->
+                            <!-- Enable checkbox -->
                             <div class="mb-3">
-                                <label class="text-xs text-gray-600 block mb-1">
-                                    End <span class="text-gray-400">(optional)</span>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox"
+                                           x-model="timeFilterEnabled"
+                                           @change="toggleTimeFilter()"
+                                           class="rounded">
+                                    <span class="text-sm font-semibold">Enable</span>
                                 </label>
-                                <input type="text" 
-                                       placeholder="2024-06 or 2024-06-30"
-                                       x-model="endDateText"
-                                       @blur="parseEndDate()"
-                                       @keydown.enter="applyDateFilter()"
-                                       class="w-full p-2 text-sm border border-gray-300 rounded font-mono">
                             </div>
                             
-                            <!-- Quick preset buttons (at bottom) -->
+                            <!-- Start date -->
+                            <div class="mb-2 flex items-center gap-1">
+                                <label class="text-sm text-gray-700 w-12">Start</label>
+                                <input type="date" 
+                                       x-model="startDate"
+                                       @change="onStartDateChange()"
+                                       :disabled="!timeFilterEnabled"
+                                       class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            </div>
+                            
+                            <!-- End date -->
+                            <div class="mb-3 flex items-center gap-1">
+                                <label class="text-sm text-gray-700 w-12">End</label>
+                                <input type="date" 
+                                       x-model="endDate"
+                                       @change="onEndDateChange()"
+                                       :disabled="!timeFilterEnabled"
+                                       class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            </div>
+                            
+                            <!-- Quick preset buttons -->
                             <div class="flex flex-wrap gap-1">
                                 <button @click="setPastWeek()" 
                                         class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50">
