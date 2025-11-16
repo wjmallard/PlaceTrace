@@ -447,7 +447,7 @@ function placeTraceApp() {
                 id: `trip-${trip.id}`,
                 type: 'trip',
                 emoji: this.getTripEmoji(trip.category),
-                label: trip.display_name,
+                label: `Trip to ${trip.display_name}`,
                 data: trip
             });
             
