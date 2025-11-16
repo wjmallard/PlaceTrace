@@ -330,10 +330,19 @@ function placeTraceApp() {
                 
                 marker.bindPopup(popupContent);
                 
-                // Click handler - select this visit and re-render to update colors
-                marker.on('click', () => {
+                // Click handler - select this visit and optionally set spatial filter
+                marker.on('click', (e) => {
+                    // If space filter is enabled, set spatial filter centered on this visit
+                    if (this.spaceFilterEnabled) {
+                        // Stop event propagation so map click handler doesn't fire
+                        L.DomEvent.stopPropagation(e);
+                        this.setSpatialFilter(visit.latitude, visit.longitude);
+                        this.loadRecentVisits();
+                    }
+                    
+                    // Always select the visit and re-render markers
                     this.selectedVisit = visit;
-                    this.renderMarkers();  // Re-render to update marker colors
+                    this.renderMarkers();
                 });
                 
                 marker.addTo(this.markerLayer);
