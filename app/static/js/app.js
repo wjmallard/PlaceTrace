@@ -57,6 +57,7 @@ function placeTraceApp() {
         selectedTripId: null,
         selectedVisit: null,  // Currently selected visit
         activeFilters: [],
+        spaceFilterEnabled: false,
         spatialFilter: {
             lat: null,
             lon: null,
@@ -126,8 +127,11 @@ function placeTraceApp() {
             
             // Add click handler for spatial filter
             this.map.on('click', (e) => {
-                this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
-                this.loadRecentVisits();
+                // Only set spatial filter if space filter is enabled
+                if (this.spaceFilterEnabled) {
+                    this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
+                    this.loadRecentVisits();
+                }
             });
             
             // Add moveend listener to reload visits based on visible bounds
@@ -588,6 +592,38 @@ function placeTraceApp() {
                 }
             }
             // Enabling - just enable the fields, don't apply filter yet
+        },
+        
+        // Handle space filter enable/disable
+        toggleSpaceFilter() {
+            if (!this.spaceFilterEnabled) {
+                // Disabling - clear spatial filter only if it was active
+                const wasActive = this.spatialFilter.lat !== null;
+                
+                if (wasActive) {
+                    this.clearSpatialFilter();
+                }
+            }
+            // Enabling - just enable the controls, don't apply filter yet
+        },
+        
+        // Get radius slider position (0-6) from radius_km
+        getRadiusSliderPosition() {
+            const radiusOptions = [1, 2, 5, 10, 20, 50, 100];
+            const index = radiusOptions.indexOf(this.spatialFilter.radius_km);
+            return index >= 0 ? index : 3; // Default to 10km (index 3)
+        },
+        
+        // Set radius_km from slider position (0-6)
+        setRadiusFromSlider(position) {
+            const radiusOptions = [1, 2, 5, 10, 20, 50, 100];
+            this.spatialFilter.radius_km = radiusOptions[position];
+            this.updateRadiusCircle();
+            
+            // Only reload if spatial filter is already active
+            if (this.spatialFilter.lat !== null) {
+                this.loadRecentVisits();
+            }
         },
         
         // Handle start date change

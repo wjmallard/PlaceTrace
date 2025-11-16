@@ -225,19 +225,33 @@
                             <span class="text-sm font-semibold text-gray-700">📍 Space Filters</span>
                             <span class="text-gray-600 font-bold" x-text="showRadiusSection ? '−' : '+'"></span>
                         </button>
-                        <div x-show="showRadiusSection" x-collapse class="mt-3">
-                            <select :value="spatialFilter.radius_km"
-                                    @change="spatialFilter.radius_km = Number($event.target.value); updateRadiusCircle(); loadRecentVisits()"
-                                    class="w-full p-2 border border-gray-300 rounded bg-white text-sm">
-                                <option value="1">1 km</option>
-                                <option value="2">2 km</option>
-                                <option value="5">5 km</option>
-                                <option value="10">10 km</option>
-                                <option value="20">20 km</option>
-                                <option value="50">50 km</option>
-                                <option value="100">100 km</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">💡 Click map to filter by location</p>
+                        <div x-show="showRadiusSection" x-collapse class="mt-2 p-4 bg-gray-50 rounded">
+                            <!-- Enable checkbox -->
+                            <div class="mb-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox"
+                                           x-model="spaceFilterEnabled"
+                                           @change="toggleSpaceFilter()"
+                                           class="rounded">
+                                    <span class="text-sm font-semibold">Enable</span>
+                                </label>
+                            </div>
+                            
+                            <!-- Radius slider -->
+                            <div class="mb-2 flex items-center gap-2">
+                                <input type="range"
+                                       min="0"
+                                       max="6"
+                                       step="1"
+                                       :value="getRadiusSliderPosition()"
+                                       @input="setRadiusFromSlider(Number($event.target.value))"
+                                       :disabled="!spaceFilterEnabled"
+                                       class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                                <span class="text-sm text-gray-700 min-w-[3rem] text-right" 
+                                      x-text="spatialFilter.radius_km + ' km'"></span>
+                            </div>
+                            
+                            <p class="text-xs text-gray-500 mt-3">💡 Click map to set center point</p>
                         </div>
                     </div>
                     
