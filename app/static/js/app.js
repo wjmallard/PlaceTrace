@@ -213,8 +213,12 @@ function placeTraceApp() {
                 // Check if this is the selected visit
                 const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
                 
-                // All markers are blue, photos get a gold center dot
+                // Photos get a yellow center dot
                 const hasPhotos = visit.photo_count > 0;
+                
+                // Selected visits are red, others are blue
+                const fillColor = isSelected ? '#DC2626' : '#3B82F6';  // darker red or blue
+                const borderColor = isSelected ? '#991B1B' : '#1E40AF';  // dark red or dark blue
                 
                 // Create custom marker with optional center dot
                 const size = 12;
@@ -224,8 +228,8 @@ function placeTraceApp() {
                     <div style="
                         width: ${size}px;
                         height: ${size}px;
-                        background-color: #3B82F6;
-                        border: ${borderWidth}px solid #1E40AF;
+                        background-color: ${fillColor};
+                        border: ${borderWidth}px solid ${borderColor};
                         border-radius: 50%;
                         opacity: 0.9;
                         position: relative;
