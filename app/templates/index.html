@@ -47,8 +47,10 @@
                             <span x-text="`${selectedVisit.duration_minutes} min`"></span>
                         </div>
                         <div class="text-xs text-gray-500 mb-3">
-                            <span x-text="selectedVisit.latitude.toFixed(6)"></span>, 
-                            <span x-text="selectedVisit.longitude.toFixed(6)"></span>
+                            <span x-text="selectedVisit.latitude.toFixed(5)"></span>, 
+                            <span x-text="selectedVisit.longitude.toFixed(5)"></span>
+                            <span class="text-gray-400 mx-1">•</span>
+                            <span class="font-mono text-gray-400" x-text="encodeGeohash(selectedVisit.latitude, selectedVisit.longitude, 10)"></span>
                         </div>
                         
                         <!-- Time Filters -->
