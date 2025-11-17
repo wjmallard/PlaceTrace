@@ -164,6 +164,7 @@ function placeTraceApp() {
             column: 'local_start_date',
             ascending: false  // Default: most recent first
         },
+        mapBoundsVersion: 0,  // Increment to trigger table direction updates
         
         // Initialize
         init() {
@@ -211,6 +212,9 @@ function placeTraceApp() {
             
             // Add moveend listener to reload visits based on visible bounds
             this.map.on('moveend', () => {
+                // Increment bounds version to trigger table direction updates
+                this.mapBoundsVersion++;
+                
                 // Only reload if no filters are active AND movement tracks are not active
                 if (!this.filterManager.tripId && !this.filterManager.spatial.lat && !this.filterManager.temporal.start && !this.showMovement) {
                     this.loadRecentVisits();
@@ -1663,6 +1667,43 @@ function placeTraceApp() {
             if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
             
             return parts.join(' ');
+        },
+        
+        // Get direction indicator for visit relative to viewport
+        getVisitDirection(visit) {
+            // Reference mapBoundsVersion to make this reactive
+            const _ = this.mapBoundsVersion;
+            
+            if (!this.map) return '';
+            
+            const bounds = this.map.getBounds();
+            const lat = visit.latitude;
+            const lon = visit.longitude;
+            
+            // Check if in viewport
+            if (bounds.contains([lat, lon])) {
+                return '•';
+            }
+            
+            // Determine direction
+            const north = lat > bounds.getNorth();
+            const south = lat < bounds.getSouth();
+            const east = lon > bounds.getEast();
+            const west = lon < bounds.getWest();
+            
+            // Diagonal directions
+            if (north && east) return '↗';
+            if (north && west) return '↖';
+            if (south && east) return '↘';
+            if (south && west) return '↙';
+            
+            // Cardinal directions
+            if (north) return '↑';
+            if (south) return '↓';
+            if (east) return '→';
+            if (west) return '←';
+            
+            return '•';
         },
         
         // Clear all filters

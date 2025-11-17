@@ -427,6 +427,7 @@
                 <table class="w-full text-sm">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
+                            <th class="px-2 py-2 text-center">🧭</th>
                             <th @click="sortVisitTable('location_name')" 
                                 class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
                                 Location <span x-show="visitTableSort.column === 'location_name'" 
@@ -457,6 +458,7 @@
                             <tr @click="selectVisitFromTable(visit)" 
                                 class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
                                 :class="selectedVisit?.id === visit.id ? 'bg-blue-100' : ''">
+                                <td class="px-2 py-2 text-center" x-text="getVisitDirection(visit)"></td>
                                 <td class="px-3 py-2" x-text="visit.location_name"></td>
                                 <td class="px-3 py-2 text-xs font-mono" x-text="encodeGeohash(visit.latitude, visit.longitude, 10)"></td>
                                 <td class="px-3 py-2" x-text="visit.local_start_date"></td>
