@@ -206,6 +206,7 @@ function placeTraceApp() {
                 // Only set spatial filter if space filter is enabled
                 if (this.spaceFilterEnabled) {
                     this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
+                    this.selectedVisit = null; // Clear selected visit since we're clicking arbitrary point
                     this.loadRecentVisits();
                 }
             });
@@ -388,7 +389,7 @@ function placeTraceApp() {
                     if (this.spaceFilterEnabled) {
                         // Stop event propagation so map click handler doesn't fire
                         L.DomEvent.stopPropagation(e);
-                        this.setSpatialFilter(visit.latitude, visit.longitude);
+                        this.setSpatialFilter(visit.latitude, visit.longitude, false); // Don't show X, visit marker shows selection
                         this.loadRecentVisits();
                     }
                     
@@ -539,7 +540,7 @@ function placeTraceApp() {
         },
         
         // Set spatial filter (map click)
-        setSpatialFilter(lat, lon) {
+        setSpatialFilter(lat, lon, showMarker = true) {
             this.filterManager.spatial.lat = lat;
             this.filterManager.spatial.lon = lon;
             
@@ -552,7 +553,22 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
             }
             
-            // Add circle showing radius (no center marker - it covers the visit)
+            // Add red X marker at center point (only for arbitrary point clicks, not visit clicks)
+            if (showMarker) {
+                const xIcon = L.divIcon({
+                    className: 'spatial-filter-x',
+                    html: '<div style="position: relative; width: 24px; height: 24px;"><div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #EF4444; font-size: 28px; font-weight: bold; line-height: 1;">✕</div></div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                this.spatialFilterMarker = L.marker([lat, lon], {
+                    icon: xIcon,
+                    interactive: false  // Don't interfere with map clicks
+                }).addTo(this.map);
+            }
+            
+            // Add circle showing radius
             this.spatialFilterCircle = L.circle([lat, lon], {
                 radius: this.filterManager.spatial.radius_km * 1000,  // Convert km to meters
                 color: '#10B981',
