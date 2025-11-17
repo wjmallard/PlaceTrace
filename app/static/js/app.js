@@ -54,24 +54,90 @@ function placeTraceApp() {
         
         trips: [],
         activeTripTab: 'day',
-        selectedTripId: null,
         selectedVisit: null,  // Currently selected visit
         activeFilters: [],
         spaceFilterEnabled: false,
-        spatialFilter: {
-            lat: null,
-            lon: null,
-            radius_km: 10
+        timeFilterEnabled: false,
+        
+        // Centralized filter manager
+        filterManager: {
+            spatial: { lat: null, lon: null, radius_km: 10 },
+            temporal: { start: null, end: null },
+            tripId: null,
+            semanticType: null,
+            search: null,
+            
+            // Build URLSearchParams from current filter state
+            buildParams(options = {}) {
+                const params = new URLSearchParams();
+                
+                // Spatial filter (if active)
+                if (this.spatial.lat !== null) {
+                    params.append('lat', this.spatial.lat);
+                    params.append('lon', this.spatial.lon);
+                    params.append('radius_km', this.spatial.radius_km);
+                }
+                // Bbox fallback (only if no spatial filter AND includeBbox requested)
+                else if (options.includeBbox && options.map) {
+                    const bounds = options.map.getBounds();
+                    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+                    params.append('bbox', bbox);
+                }
+                
+                // Temporal filter
+                if (this.temporal.start) {
+                    params.append('start_date', this.temporal.start);
+                }
+                if (this.temporal.end) {
+                    params.append('end_date', this.temporal.end);
+                }
+                
+                // Trip filter
+                if (this.tripId) {
+                    params.append('trip_id', this.tripId);
+                    params.append('limit', 5000);
+                }
+                
+                // Semantic type filter
+                if (this.semanticType) {
+                    params.append('semantic_type', this.semanticType);
+                }
+                
+                // Search filter
+                if (this.search) {
+                    params.append('search', this.search);
+                }
+                
+                return params;
+            },
+            
+            // Clear specific filters
+            clearSpatial() {
+                this.spatial = { lat: null, lon: null, radius_km: 10 };
+            },
+            
+            clearTemporal() {
+                this.temporal = { start: null, end: null };
+            },
+            
+            clearTrip() {
+                this.tripId = null;
+            },
+            
+            clearAll() {
+                this.spatial = { lat: null, lon: null, radius_km: 10 };
+                this.temporal = { start: null, end: null };
+                this.tripId = null;
+                this.semanticType = null;
+                this.search = null;
+            }
         },
+        
+        // UI state for date inputs
         dateRangeDraft: {
             start: '',
             end: ''
         },
-        dateRange: {
-            start: null,
-            end: null
-        },
-        timeFilterEnabled: false,
         startDate: '',
         endDate: '',
         lastValidStartDate: '',
@@ -137,7 +203,7 @@ function placeTraceApp() {
             // Add moveend listener to reload visits based on visible bounds
             this.map.on('moveend', () => {
                 // Only reload if no filters are active AND movement tracks are not active
-                if (!this.selectedTripId && !this.spatialFilter.lat && !this.dateRange.start && !this.showMovement) {
+                if (!this.filterManager.tripId && !this.filterManager.spatial.lat && !this.filterManager.temporal.start && !this.showMovement) {
                     this.loadRecentVisits();
                 }
             });
@@ -154,11 +220,11 @@ function placeTraceApp() {
                 const params = new URLSearchParams();
                 
                 // Add date range filter if active
-                if (this.dateRange.start) {
-                    params.append('start_date', this.dateRange.start);
+                if (this.filterManager.temporal.start) {
+                    params.append('start_date', this.filterManager.temporal.start);
                 }
-                if (this.dateRange.end) {
-                    params.append('end_date', this.dateRange.end);
+                if (this.filterManager.temporal.end) {
+                    params.append('end_date', this.filterManager.temporal.end);
                 }
                 
                 const response = await fetch(`/api/trips?${params}`);
@@ -174,32 +240,11 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                const params = new URLSearchParams();
-                
-                // Add spatial filter if active
-                if (this.spatialFilter.lat !== null) {
-                    params.append('lat', this.spatialFilter.lat);
-                    params.append('lon', this.spatialFilter.lon);
-                    params.append('radius_km', this.spatialFilter.radius_km);
-                }
-                // Add date range filter if active
-                else if (this.dateRange.start) {
-                    params.append('start_date', this.dateRange.start);
-                    if (this.dateRange.end) {
-                        params.append('end_date', this.dateRange.end);
-                    }
-                }
-                // Movement tracks without showing all nearby - don't reload, visits are already filtered
-                else if (this.showMovement && !this.showAllNearbyVisits) {
-                    this.loading = false;
-                    return;
-                }
-                // No filters active - use map bounds
-                else {
-                    const bounds = this.map.getBounds();
-                    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-                    params.append('bbox', bbox);
-                }
+                // Build params using filterManager - include bbox only if no other spatial filter
+                const params = this.filterManager.buildParams({ 
+                    includeBbox: !this.filterManager.spatial.lat && !this.filterManager.tripId && !this.filterManager.temporal.start && !this.showMovement,
+                    map: this.map 
+                });
                 
                 const response = await fetch(`/api/visits?${params}`);
                 const data = await response.json();
@@ -220,27 +265,11 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                const params = new URLSearchParams({
-                    trip_id: tripId,
-                    limit: 5000
-                });
+                // Set trip filter
+                this.filterManager.tripId = tripId;
                 
-                // Add spatial filter if active
-                if (this.spatialFilter.lat !== null) {
-                    params.append('lat', this.spatialFilter.lat);
-                    params.append('lon', this.spatialFilter.lon);
-                    params.append('radius_km', this.spatialFilter.radius_km);
-                }
-                
-                // Add date range filter if active
-                if (this.dateRange.start) {
-                    params.append('start_date', new Date(this.dateRange.start).toISOString());
-                }
-                if (this.dateRange.end) {
-                    const endDate = new Date(this.dateRange.end);
-                    endDate.setHours(23, 59, 59, 999);
-                    params.append('end_date', endDate.toISOString());
-                }
+                // Build params using filterManager (no bbox for trip queries)
+                const params = this.filterManager.buildParams({ includeBbox: false });
                 
                 const response = await fetch(`/api/visits?${params}`);
                 const data = await response.json();
@@ -360,7 +389,7 @@ function placeTraceApp() {
             
             // Only fit bounds when we have filters active
             // (Don't fit when using bbox - that would cause infinite loop)
-            const hasFilters = this.selectedTripId || this.spatialFilter.lat !== null || this.dateRange.start;
+            const hasFilters = this.filterManager.tripId || this.filterManager.spatial.lat !== null || this.filterManager.temporal.start;
             if (!hasFilters) return;
             
             const bounds = L.latLngBounds(
@@ -437,8 +466,6 @@ function placeTraceApp() {
         
         // Select a trip
         selectTrip(trip) {
-            this.selectedTripId = trip.id;
-            
             // Update movement date to trip start date (already in YYYY-MM-DD format)
             this.selectedDay = trip.local_start_date;
             
@@ -470,12 +497,8 @@ function placeTraceApp() {
             
             // If trip filter removed, clear selection and reload
             if (filterId.startsWith('trip-')) {
-                this.selectedTripId = null;
-                if (this.spatialFilter.lat === null) {
-                    this.loadRecentVisits();
-                } else {
-                    this.loadRecentVisits();  // Will include spatial filter
-                }
+                this.filterManager.clearTrip();
+                this.loadRecentVisits();
             }
             
             // If spatial filter removed, clear it and reload
@@ -491,8 +514,8 @@ function placeTraceApp() {
         
         // Set spatial filter (map click)
         setSpatialFilter(lat, lon) {
-            this.spatialFilter.lat = lat;
-            this.spatialFilter.lon = lon;
+            this.filterManager.spatial.lat = lat;
+            this.filterManager.spatial.lon = lon;
             
             // Remove old visual indicators
             if (this.spatialFilterMarker) {
@@ -505,7 +528,7 @@ function placeTraceApp() {
             
             // Add circle showing radius (no center marker - it covers the visit)
             this.spatialFilterCircle = L.circle([lat, lon], {
-                radius: this.spatialFilter.radius_km * 1000,  // Convert km to meters
+                radius: this.filterManager.spatial.radius_km * 1000,  // Convert km to meters
                 color: '#10B981',
                 fillColor: '#10B981',
                 fillOpacity: 0.1,
@@ -517,8 +540,8 @@ function placeTraceApp() {
                 id: 'spatial',
                 type: 'spatial',
                 emoji: '📍',
-                label: `Within ${this.spatialFilter.radius_km}km`,
-                data: { lat, lon, radius_km: this.spatialFilter.radius_km }
+                label: `Within ${this.filterManager.spatial.radius_km}km`,
+                data: { lat, lon, radius_km: this.filterManager.spatial.radius_km }
             });
             
             // Note: Caller is responsible for calling loadRecentVisits()
@@ -526,8 +549,7 @@ function placeTraceApp() {
         
         // Clear spatial filter
         clearSpatialFilter() {
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.clearSpatial();
             
             // Remove visual indicators
             if (this.spatialFilterMarker) {
@@ -540,26 +562,22 @@ function placeTraceApp() {
             }
             
             // Reload visits without spatial filter
-            if (this.selectedTripId) {
-                this.loadTripVisits(this.selectedTripId);
-            } else {
-                this.loadRecentVisits();
-            }
+            this.loadRecentVisits();
         },
         
         // Update radius circle when slider changes
         updateRadiusCircle() {
             // If spatial filter is active, update the circle and filter chip
-            if (this.spatialFilter.lat !== null) {
+            if (this.filterManager.spatial.lat !== null) {
                 // Update circle radius
                 if (this.spatialFilterCircle) {
                     this.map.removeLayer(this.spatialFilterCircle);
                 }
                 
                 this.spatialFilterCircle = L.circle(
-                    [this.spatialFilter.lat, this.spatialFilter.lon],
+                    [this.filterManager.spatial.lat, this.filterManager.spatial.lon],
                     {
-                        radius: this.spatialFilter.radius_km * 1000,  // Convert km to meters
+                        radius: this.filterManager.spatial.radius_km * 1000,  // Convert km to meters
                         color: '#10B981',
                         fillColor: '#10B981',
                         fillOpacity: 0.1,
@@ -572,11 +590,11 @@ function placeTraceApp() {
                     id: 'spatial',
                     type: 'spatial',
                     emoji: '📍',
-                    label: `Within ${this.spatialFilter.radius_km}km`,
+                    label: `Within ${this.filterManager.spatial.radius_km}km`,
                     data: { 
-                        lat: this.spatialFilter.lat, 
-                        lon: this.spatialFilter.lon, 
-                        radius_km: this.spatialFilter.radius_km 
+                        lat: this.filterManager.spatial.lat, 
+                        lon: this.filterManager.spatial.lon, 
+                        radius_km: this.filterManager.spatial.radius_km 
                     }
                 });
                 
@@ -589,7 +607,7 @@ function placeTraceApp() {
         toggleTimeFilter() {
             if (!this.timeFilterEnabled) {
                 // Disabling - clear dates and reload only if filter was active
-                const wasActive = this.dateRange.start !== null;
+                const wasActive = this.filterManager.temporal.start !== null;
                 
                 this.startDate = '';
                 this.endDate = '';
@@ -607,7 +625,7 @@ function placeTraceApp() {
         toggleSpaceFilter() {
             if (!this.spaceFilterEnabled) {
                 // Disabling - clear spatial filter only if it was active
-                const wasActive = this.spatialFilter.lat !== null;
+                const wasActive = this.filterManager.spatial.lat !== null;
                 
                 if (wasActive) {
                     this.clearSpatialFilter();
@@ -619,18 +637,18 @@ function placeTraceApp() {
         // Get radius slider position (0-6) from radius_km
         getRadiusSliderPosition() {
             const radiusOptions = [1, 2, 5, 10, 20, 50, 100];
-            const index = radiusOptions.indexOf(this.spatialFilter.radius_km);
+            const index = radiusOptions.indexOf(this.filterManager.spatial.radius_km);
             return index >= 0 ? index : 3; // Default to 10km (index 3)
         },
         
         // Set radius_km from slider position (0-6)
         setRadiusFromSlider(position) {
             const radiusOptions = [1, 2, 5, 10, 20, 50, 100];
-            this.spatialFilter.radius_km = radiusOptions[position];
+            this.filterManager.spatial.radius_km = radiusOptions[position];
             this.updateRadiusCircle();
             
             // Only reload if spatial filter is already active
-            if (this.spatialFilter.lat !== null) {
+            if (this.filterManager.spatial.lat !== null) {
                 this.loadRecentVisits();
             }
         },
@@ -677,8 +695,8 @@ function placeTraceApp() {
                 return;
             }
             
-            this.dateRange.start = this.startDate;
-            this.dateRange.end = this.endDate;
+            this.filterManager.temporal.start = this.startDate;
+            this.filterManager.temporal.end = this.endDate;
             
             // Build filter chip label
             const label = this.formatDateRangeChip();
@@ -689,16 +707,12 @@ function placeTraceApp() {
                 type: 'date',
                 emoji: '📅',
                 label: label.replace('📅 ', ''),
-                data: { start: this.dateRange.start, end: this.dateRange.end }
+                data: { start: this.filterManager.temporal.start, end: this.filterManager.temporal.end }
             });
             
             // Reload trips and visits with date filter
             this.loadTrips();
-            if (this.selectedTripId) {
-                this.loadTripVisits(this.selectedTripId);
-            } else {
-                this.loadRecentVisits();
-            }
+            this.loadRecentVisits();
         },
         
         parseDate() {
@@ -711,11 +725,11 @@ function placeTraceApp() {
                 return;
             }
             
-            this.dateRange.start = parsed.start;
+            this.filterManager.temporal.start = parsed.start;
             
             // Always set end - either from endDateText or auto-expanded from dateText
             if (!this.endDateText.trim()) {
-                this.dateRange.end = parsed.end;
+                this.filterManager.temporal.end = parsed.end;
             }
         },
         
@@ -723,7 +737,7 @@ function placeTraceApp() {
         parseEndDate() {
             if (!this.endDateText.trim()) {
                 // Empty = today
-                this.dateRange.end = new Date().toISOString().split('T')[0];
+                this.filterManager.temporal.end = new Date().toISOString().split('T')[0];
                 return;
             }
             
@@ -734,7 +748,7 @@ function placeTraceApp() {
                 return;
             }
             
-            this.dateRange.end = parsed.end;
+            this.filterManager.temporal.end = parsed.end;
         },
         
         // Parse date input (returns {start, end})
@@ -823,22 +837,22 @@ function placeTraceApp() {
         
         // Format date range for chip display
         formatDateRangeChip() {
-            if (!this.dateRange.start) return '';
+            if (!this.filterManager.temporal.start) return '';
             
-            const start = new Date(this.dateRange.start).toLocaleDateString('en-US', { 
+            const start = new Date(this.filterManager.temporal.start).toLocaleDateString('en-US', { 
                 year: 'numeric', 
                 month: 'short', 
                 day: 'numeric' 
             });
             
-            const end = new Date(this.dateRange.end).toLocaleDateString('en-US', { 
+            const end = new Date(this.filterManager.temporal.end).toLocaleDateString('en-US', { 
                 year: 'numeric', 
                 month: 'short', 
                 day: 'numeric' 
             });
             
             // If same date, show once
-            if (this.dateRange.start === this.dateRange.end) {
+            if (this.filterManager.temporal.start === this.filterManager.temporal.end) {
                 return `📅 ${start}`;
             }
             
@@ -847,8 +861,7 @@ function placeTraceApp() {
         
         // Clear date range filter
         clearDateFilter() {
-            this.dateRange.start = null;
-            this.dateRange.end = null;
+            this.filterManager.clearTemporal();
             this.dateText = '';
             this.endDateText = '';
             this.startDate = '';
@@ -863,11 +876,7 @@ function placeTraceApp() {
             this.loadTrips();
             
             // Reload visits without date filter
-            if (this.selectedTripId) {
-                this.loadTripVisits(this.selectedTripId);
-            } else {
-                this.loadRecentVisits();
-            }
+            this.loadRecentVisits();
         },
         
         // Format date for filter chip (short format)
@@ -1268,8 +1277,7 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear spatial filter state (time and space are mutually exclusive)
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.clearSpatial();
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1282,8 +1290,8 @@ function placeTraceApp() {
             this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Set date range to just this day
-            this.dateRange.start = dateStr;
-            this.dateRange.end = dateStr;
+            this.filterManager.temporal.start = dateStr;
+            this.filterManager.temporal.end = dateStr;
             
             // Add filter chip
             this.addFilter({
@@ -1306,8 +1314,8 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear spatial filter state (time and space are mutually exclusive)
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.spatial.lat = null;
+            this.filterManager.spatial.lon = null;
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1330,8 +1338,8 @@ function placeTraceApp() {
             const endStr = endDate.toISOString().split('T')[0];
             
             // Set date range
-            this.dateRange.start = startStr;
-            this.dateRange.end = endStr;
+            this.filterManager.temporal.start = startStr;
+            this.filterManager.temporal.end = endStr;
             
             // Add filter chip
             this.addFilter({
@@ -1354,8 +1362,8 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear spatial filter (time and space are mutually exclusive)
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.spatial.lat = null;
+            this.filterManager.spatial.lon = null;
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1378,8 +1386,8 @@ function placeTraceApp() {
             const endStr = endDate.toISOString().split('T')[0];
             
             // Set date range
-            this.dateRange.start = startStr;
-            this.dateRange.end = endStr;
+            this.filterManager.temporal.start = startStr;
+            this.filterManager.temporal.end = endStr;
             
             // Add filter chip
             this.addFilter({
@@ -1402,8 +1410,8 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear spatial filter (time and space are mutually exclusive)
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.spatial.lat = null;
+            this.filterManager.spatial.lon = null;
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1426,8 +1434,8 @@ function placeTraceApp() {
             const endStr = endDate.toISOString().split('T')[0];
             
             // Set date range
-            this.dateRange.start = startStr;
-            this.dateRange.end = endStr;
+            this.filterManager.temporal.start = startStr;
+            this.filterManager.temporal.end = endStr;
             
             // Add filter chip
             this.addFilter({
@@ -1450,8 +1458,8 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear spatial filter (time and space are mutually exclusive)
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            this.filterManager.spatial.lat = null;
+            this.filterManager.spatial.lon = null;
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1470,8 +1478,8 @@ function placeTraceApp() {
             const endStr = `${year}-12-31`;
             
             // Set date range
-            this.dateRange.start = startStr;
-            this.dateRange.end = endStr;
+            this.filterManager.temporal.start = startStr;
+            this.filterManager.temporal.end = endStr;
             
             // Add filter chip
             this.addFilter({
@@ -1494,13 +1502,12 @@ function placeTraceApp() {
             this.map.closePopup();
             
             // Clear date filter state (time and space are mutually exclusive)
-            this.dateRange.start = null;
-            this.dateRange.end = null;
+            this.filterManager.clearTemporal();
             // Remove date chip from UI
             this.activeFilters = this.activeFilters.filter(f => f.id !== 'date-range');
             
             // Set radius first, then call setSpatialFilter
-            this.spatialFilter.radius_km = radius_km;
+            this.filterManager.spatial.radius_km = radius_km;
             this.setSpatialFilter(lat, lon);
             
             // Wait for visits to load before fitting bounds
@@ -1509,12 +1516,10 @@ function placeTraceApp() {
         
         // Clear all filters
         clearAllFilters() {
-            // Clear trip selection
-            this.selectedTripId = null;
+            // Clear all filter state
+            this.filterManager.clearAll();
             
-            // Clear spatial filter
-            this.spatialFilter.lat = null;
-            this.spatialFilter.lon = null;
+            // Clear visual indicators
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
                 this.spatialFilterMarker = null;
@@ -1523,10 +1528,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            
-            // Clear date filter
-            this.dateRange.start = null;
-            this.dateRange.end = null;
             
             // Clear all filter chips
             this.activeFilters = [];
