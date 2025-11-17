@@ -455,7 +455,8 @@
                     </thead>
                     <tbody>
                         <template x-for="visit in visitTableSortedData" :key="visit.id">
-                            <tr @click="selectVisitFromTable(visit)" 
+                            <tr :id="'table-visit-' + visit.id"
+                                @click="selectVisitFromTable(visit)" 
                                 class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
                                 :class="selectedVisit?.id === visit.id ? 'bg-blue-100' : ''">
                                 <td class="px-2 py-2 text-center" x-text="getVisitDirection(visit)"></td>

@@ -395,6 +395,9 @@ function placeTraceApp() {
                     // Always select the visit and re-render markers
                     this.selectedVisit = visit;
                     this.renderMarkers();
+                    
+                    // Scroll table to show this visit
+                    this.scrollTableToVisit(visit.id);
                 });
                 
                 marker.addTo(this.markerLayer);
@@ -1634,6 +1637,22 @@ function placeTraceApp() {
             
             // Re-render markers to highlight selected visit
             this.renderMarkers();
+        },
+        
+        // Scroll table to show selected visit
+        scrollTableToVisit(visitId) {
+            if (!this.showVisitTable) return;
+            
+            // Use setTimeout to ensure DOM is updated
+            setTimeout(() => {
+                const row = document.getElementById(`table-visit-${visitId}`);
+                if (row) {
+                    row.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }
+            }, 100);
         },
         
         // Format time as HH:MM:SS (rounded seconds)
