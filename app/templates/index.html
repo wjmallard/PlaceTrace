@@ -251,7 +251,11 @@
                                       x-text="filterManager.spatial.radius_km + ' km'"></span>
                             </div>
                             
-                            <p class="text-xs text-gray-500 mt-3">💡 Click map to set center point</p>
+                            <p class="text-xs text-gray-500 mt-3" 
+                               x-show="filterManager.spatial.lat === null">💡 Click map to set center point</p>
+                            <p class="text-xs text-gray-700 mt-3" 
+                               x-show="filterManager.spatial.lat !== null"
+                               x-text="'📍 ' + filterManager.spatial.lat?.toFixed(5) + ', ' + filterManager.spatial.lon?.toFixed(5) + '\u00A0\u00A0🔷 ' + encodeGeohash(filterManager.spatial.lat, filterManager.spatial.lon, 10)"></p>
                         </div>
                     </div>
                     
