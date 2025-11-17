@@ -109,6 +109,22 @@
                 </div>
             </div>
             
+            <!-- Visit Table Toggle -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex gap-2">
+                    <button @click="showVisitTable = true; loadVisitTableData()" 
+                            :disabled="showVisitTable"
+                            class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300">
+                        Show Table
+                    </button>
+                    <button @click="clearAllFilters(); loadRecentVisits();" 
+                            :disabled="activeFilters.length === 0"
+                            class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+            
             <!-- Trip Selector -->
             <div class="flex-1 overflow-y-auto">
                 <div class="p-4">
@@ -311,7 +327,7 @@
                                             <template x-for="trip in yearGroup.trips" :key="trip.id">
                                                 <button
                                                     @click="selectTrip(trip)"
-                                                    :class="selectedTripId === trip.id ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'"
+                                                    :class="filterManager.tripId === trip.id ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'"
                                                     class="w-full text-left p-3 rounded-lg border transition-colors">
                                                     <div class="font-medium text-gray-900" x-text="trip.display_name"></div>
                                                     <div class="text-xs text-gray-600 mt-1">
@@ -334,7 +350,7 @@
                                 <template x-for="trip in filteredTrips" :key="trip.id">
                                     <button
                                         @click="selectTrip(trip)"
-                                        :class="selectedTripId === trip.id ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'"
+                                        :class="filterManager.tripId === trip.id ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'"
                                         class="w-full text-left p-3 rounded-lg border transition-colors">
                                         <div class="font-medium text-gray-900" x-text="trip.display_name"></div>
                                         <div class="text-xs text-gray-600 mt-1">
@@ -381,6 +397,79 @@
                     <p class="mt-2 text-gray-600">Loading visits...</p>
                 </div>
             </div>
+        </div>
+        
+        <!-- Visit Table Panel - Absolute positioned overlay -->
+        <div x-show="showVisitTable" 
+             class="fixed bottom-0 left-80 right-0 h-1/3 border-t-2 border-gray-300 bg-white z-[900] flex flex-col">
+            
+            <!-- Table Header -->
+            <div class="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-semibold text-gray-700">
+                        Visit Table
+                        <span class="text-gray-500 font-normal" x-text="'(' + visitTableData.length + ' visits)'"></span>
+                    </h3>
+                    <span x-show="isViewportLimited()" class="text-xs text-amber-600">
+                        ⚠️ Viewport only
+                    </span>
+                </div>
+                <button @click="showVisitTable = false" 
+                        class="text-gray-500 hover:text-gray-700 p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Table -->
+            <div class="flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th @click="sortVisitTable('location_name')" 
+                                class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
+                                Location <span x-show="visitTableSort.column === 'location_name'" 
+                                               x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
+                            </th>
+                            <th class="px-3 py-2 text-left">Geohash</th>
+                            <th @click="sortVisitTable('local_start_date')" 
+                                class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
+                                Date <span x-show="visitTableSort.column === 'local_start_date'" 
+                                           x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
+                            </th>
+                            <th class="px-3 py-2 text-left">Time</th>
+                            <th @click="sortVisitTable('duration_minutes')" 
+                                class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
+                                Duration <span x-show="visitTableSort.column === 'duration_minutes'" 
+                                               x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
+                            </th>
+                            <th @click="sortVisitTable('photo_count')" 
+                                class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
+                                Photos <span x-show="visitTableSort.column === 'photo_count'" 
+                                             x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
+                            </th>
+                            <th class="px-3 py-2 text-left">Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="visit in visitTableSortedData" :key="visit.id">
+                            <tr @click="selectVisitFromTable(visit)" 
+                                class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
+                                :class="selectedVisit?.id === visit.id ? 'bg-blue-100' : ''">
+                                <td class="px-3 py-2" x-text="visit.location_name"></td>
+                                <td class="px-3 py-2 text-xs font-mono" x-text="encodeGeohash(visit.latitude, visit.longitude, 10)"></td>
+                                <td class="px-3 py-2" x-text="visit.local_start_date"></td>
+                                <td class="px-3 py-2" x-text="formatTime(visit.local_start_time)"></td>
+                                <td class="px-3 py-2" x-text="formatDuration(visit.duration_minutes)"></td>
+                                <td class="px-3 py-2" x-text="visit.photo_count"></td>
+                                <td class="px-3 py-2 text-xs" x-text="visit.semantic_type || '-'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            
         </div>
     </div>
     

@@ -156,6 +156,15 @@ function placeTraceApp() {
         showAllNearbyVisits: false,  // Default: show only selected day visits
         savedVisitState: null,   // Store visits to restore when showing all nearby
         
+        // Visit table panel state
+        showVisitTable: false,
+        visitTableData: [],
+        visitTableSortedData: [],  // Cached sorted data
+        visitTableSort: {
+            column: 'local_start_date',
+            ascending: false  // Default: most recent first
+        },
+        
         // Initialize
         init() {
             this.initMap();
@@ -253,6 +262,11 @@ function placeTraceApp() {
                 this.renderMarkers();
                 this.fitMapToVisits();
                 
+                // Reload table if visible
+                if (this.showVisitTable) {
+                    await this.loadVisitTableData();
+                }
+                
             } catch (error) {
                 console.error('Error loading visits:', error);
             } finally {
@@ -277,6 +291,11 @@ function placeTraceApp() {
                 this.visits = data.visits;
                 this.renderMarkers();
                 this.fitMapToVisits();
+                
+                // Reload table if visible
+                if (this.showVisitTable) {
+                    await this.loadVisitTableData();
+                }
                 
             } catch (error) {
                 console.error('Error loading trip visits:', error);
@@ -713,6 +732,11 @@ function placeTraceApp() {
             // Reload trips and visits with date filter
             this.loadTrips();
             this.loadRecentVisits();
+            
+            // Reload table if visible
+            if (this.showVisitTable) {
+                this.loadVisitTableData();
+            }
         },
         
         parseDate() {
@@ -1512,6 +1536,133 @@ function placeTraceApp() {
             
             // Wait for visits to load before fitting bounds
             await this.loadRecentVisits();
+        },
+        
+        // Visit Table Functions
+        
+        // Check if we're showing viewport-limited results
+        isViewportLimited() {
+            return !this.filterManager.tripId && 
+                   !this.filterManager.spatial.lat && 
+                   !this.filterManager.temporal.start;
+        },
+        
+        // Load visit table data
+        async loadVisitTableData() {
+            try {
+                console.log('Loading visit table data...');
+                // Build params - never include bbox for table (we want ALL filtered visits)
+                const params = this.filterManager.buildParams({ includeBbox: false });
+                
+                // If no filters active, we need to use bbox to avoid loading everything
+                if (this.isViewportLimited()) {
+                    const bounds = this.map.getBounds();
+                    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+                    params.append('bbox', bbox);
+                    console.log('Using bbox for viewport-limited query');
+                }
+                
+                console.log('Query params:', params.toString());
+                const response = await fetch(`/api/visits?${params}`);
+                const data = await response.json();
+                
+                console.log('Received data:', data);
+                this.visitTableData = data.visits;
+                this.updateSortedVisitTableData();
+                console.log('visitTableData set to:', this.visitTableData.length, 'visits');
+            } catch (error) {
+                console.error('Error loading visit table data:', error);
+            }
+        },
+        
+        // Update sorted data array
+        updateSortedVisitTableData() {
+            console.log('updateSortedVisitTableData called, visitTableData.length:', this.visitTableData.length);
+            const data = [...this.visitTableData];
+            const column = this.visitTableSort.column;
+            const ascending = this.visitTableSort.ascending;
+            
+            console.log('Sorting by:', column, 'ascending:', ascending);
+            
+            data.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+                
+                // Handle nulls
+                if (aVal === null || aVal === undefined) return 1;
+                if (bVal === null || bVal === undefined) return -1;
+                
+                // Compare
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+            
+            this.visitTableSortedData = data;
+            console.log('visitTableSortedData set to:', this.visitTableSortedData.length, 'visits');
+        },
+        
+        // Sort visit table
+        sortVisitTable(column) {
+            if (this.visitTableSort.column === column) {
+                // Toggle direction if same column
+                this.visitTableSort.ascending = !this.visitTableSort.ascending;
+            } else {
+                // New column - default to descending for dates/numbers, ascending for text
+                this.visitTableSort.column = column;
+                this.visitTableSort.ascending = column === 'location_name';
+            }
+            this.updateSortedVisitTableData();
+        },
+        
+        // Select visit from table
+        selectVisitFromTable(visit) {
+            this.selectedVisit = visit;
+            
+            // Only center map if visit is outside current viewport
+            const bounds = this.map.getBounds();
+            const visitLatLng = L.latLng(visit.latitude, visit.longitude);
+            
+            if (!bounds.contains(visitLatLng)) {
+                // Visit is outside viewport - center on it
+                this.map.setView([visit.latitude, visit.longitude], this.map.getZoom());
+            }
+            
+            // Re-render markers to highlight selected visit
+            this.renderMarkers();
+        },
+        
+        // Format time as HH:MM:SS (rounded seconds)
+        formatTime(localTime) {
+            if (!localTime) return '-';
+            
+            // Split into parts
+            const parts = localTime.split(':');
+            if (parts.length !== 3) return localTime; // Return as-is if unexpected format
+            
+            const hours = parts[0];
+            const minutes = parts[1];
+            const seconds = Math.round(parseFloat(parts[2])); // Round to nearest second
+            
+            return `${hours}:${minutes}:${String(seconds).padStart(2, '0')}`;
+        },
+        
+        // Format duration as 3d 4h 25m
+        formatDuration(minutes) {
+            if (!minutes || minutes === 0) return '-';
+            
+            const totalMinutes = Math.floor(minutes);
+            const days = Math.floor(totalMinutes / (24 * 60));
+            const remainingMinutes = totalMinutes % (24 * 60);
+            const hours = Math.floor(remainingMinutes / 60);
+            const mins = remainingMinutes % 60;
+            
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0) parts.push(`${hours}h`);
+            if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
+            
+            return parts.join(' ');
         },
         
         // Clear all filters
