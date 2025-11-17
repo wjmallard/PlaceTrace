@@ -55,7 +55,6 @@ function placeTraceApp() {
         trips: [],
         activeTripTab: 'day',
         selectedVisit: null,  // Currently selected visit
-        activeFilters: [],
         spaceFilterEnabled: false,
         timeFilterEnabled: false,
         
@@ -497,46 +496,9 @@ function placeTraceApp() {
             this.selectedDay = trip.local_start_date;
             
             // Add trip filter chip
-            this.addFilter({
-                id: `trip-${trip.id}`,
-                type: 'trip',
-                emoji: this.getTripEmoji(trip.category),
-                label: `Trip to ${trip.display_name}`,
-                data: trip
-            });
             
             // Load visits for this trip
             this.loadTripVisits(trip.id);
-        },
-        
-        // Add filter chip
-        addFilter(filter) {
-            // Remove existing filter of same type
-            this.activeFilters = this.activeFilters.filter(f => f.type !== filter.type);
-            
-            // Add new filter
-            this.activeFilters.push(filter);
-        },
-        
-        // Remove filter chip
-        removeFilter(filterId) {
-            this.activeFilters = this.activeFilters.filter(f => f.id !== filterId);
-            
-            // If trip filter removed, clear selection and reload
-            if (filterId.startsWith('trip-')) {
-                this.filterManager.clearTrip();
-                this.loadRecentVisits();
-            }
-            
-            // If spatial filter removed, clear it and reload
-            if (filterId === 'spatial') {
-                this.clearSpatialFilter();
-            }
-            
-            // If date filter removed, clear it and reload
-            if (filterId === 'date-range') {
-                this.clearDateFilter();
-            }
         },
         
         // Set spatial filter (map click)
@@ -578,13 +540,6 @@ function placeTraceApp() {
             }).addTo(this.map);
             
             // Add filter chip
-            this.addFilter({
-                id: 'spatial',
-                type: 'spatial',
-                emoji: '📍',
-                label: `Within ${this.filterManager.spatial.radius_km}km`,
-                data: { lat, lon, radius_km: this.filterManager.spatial.radius_km }
-            });
             
             // Note: Caller is responsible for calling loadRecentVisits()
         },
@@ -592,6 +547,7 @@ function placeTraceApp() {
         // Clear spatial filter
         clearSpatialFilter() {
             this.filterManager.clearSpatial();
+            this.spaceFilterEnabled = false; // Disable the toggle
             
             // Remove visual indicators
             if (this.spatialFilterMarker) {
@@ -628,17 +584,6 @@ function placeTraceApp() {
                 ).addTo(this.map);
                 
                 // Update filter chip label
-                this.addFilter({
-                    id: 'spatial',
-                    type: 'spatial',
-                    emoji: '📍',
-                    label: `Within ${this.filterManager.spatial.radius_km}km`,
-                    data: { 
-                        lat: this.filterManager.spatial.lat, 
-                        lon: this.filterManager.spatial.lon, 
-                        radius_km: this.filterManager.spatial.radius_km 
-                    }
-                });
                 
                 // Note: Caller responsible for reloading visits
             }
@@ -648,19 +593,23 @@ function placeTraceApp() {
         // Handle time filter enable/disable
         toggleTimeFilter() {
             if (!this.timeFilterEnabled) {
-                // Disabling - clear dates and reload only if filter was active
+                // Disabling - clear filter state but keep the date inputs
                 const wasActive = this.filterManager.temporal.start !== null;
                 
-                this.startDate = '';
-                this.endDate = '';
-                this.lastValidStartDate = '';
-                this.lastValidEndDate = '';
-                
                 if (wasActive) {
-                    this.clearDateFilter();
+                    // Clear the filter in filterManager
+                    this.filterManager.clearTemporal();
+                    
+                    // Reload without the filter
+                    this.loadTrips();
+                    this.loadRecentVisits();
+                }
+            } else {
+                // Enabling - apply filter immediately if valid dates exist
+                if (this.startDate && this.endDate) {
+                    this.applyDateFilter();
                 }
             }
-            // Enabling - just enable the fields, don't apply filter yet
         },
         
         // Handle space filter enable/disable
@@ -711,7 +660,7 @@ function placeTraceApp() {
             }
             
             // Apply the filter
-            this.applySimpleDateFilter();
+            this.applyDateFilter();
         },
         
         // Handle end date change
@@ -728,11 +677,11 @@ function placeTraceApp() {
             this.lastValidEndDate = this.endDate;
             
             // Apply the filter
-            this.applySimpleDateFilter();
+            this.applyDateFilter();
         },
         
         // Apply simple date filter (no parsing, just use the date inputs directly)
-        applySimpleDateFilter() {
+        applyDateFilter() {
             if (!this.startDate || !this.endDate) {
                 return;
             }
@@ -744,13 +693,6 @@ function placeTraceApp() {
             const label = this.formatDateRangeChip();
             
             // Add filter chip
-            this.addFilter({
-                id: 'date',
-                type: 'date',
-                emoji: '📅',
-                label: label.replace('📅 ', ''),
-                data: { start: this.filterManager.temporal.start, end: this.filterManager.temporal.end }
-            });
             
             // Reload trips and visits with date filter
             this.loadTrips();
@@ -849,7 +791,7 @@ function placeTraceApp() {
             this.lastValidStartDate = this.startDate;
             this.lastValidEndDate = this.endDate;
             
-            this.applySimpleDateFilter();
+            this.applyDateFilter();
         },
         
         // Quick preset: Past month
@@ -864,7 +806,7 @@ function placeTraceApp() {
             this.lastValidStartDate = this.startDate;
             this.lastValidEndDate = this.endDate;
             
-            this.applySimpleDateFilter();
+            this.applyDateFilter();
         },
         
         // Quick preset: Past year
@@ -879,7 +821,7 @@ function placeTraceApp() {
             this.lastValidStartDate = this.startDate;
             this.lastValidEndDate = this.endDate;
             
-            this.applySimpleDateFilter();
+            this.applyDateFilter();
         },
         
         // Format date range for chip display
@@ -909,15 +851,13 @@ function placeTraceApp() {
         // Clear date range filter
         clearDateFilter() {
             this.filterManager.clearTemporal();
+            this.timeFilterEnabled = false; // Disable the toggle
             this.dateText = '';
             this.endDateText = '';
             this.startDate = '';
             this.endDate = '';
             this.lastValidStartDate = '';
             this.lastValidEndDate = '';
-            
-            // Remove date filter chip
-            this.removeFilter('date');
             
             // Reload trips without date filter
             this.loadTrips();
@@ -1339,19 +1279,12 @@ function placeTraceApp() {
                 this.spatialFilterCircle = null;
             }
             // Remove spatial chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Set date range to just this day
             this.filterManager.temporal.start = dateStr;
             this.filterManager.temporal.end = dateStr;
             
             // Add filter chip
-            this.addFilter({
-                id: 'date-range',
-                type: 'date',
-                emoji: '📅',
-                label: this.formatDateShort(dateStr)
-            });
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1377,7 +1310,6 @@ function placeTraceApp() {
                 this.spatialFilterCircle = null;
             }
             // Remove spatial chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Calculate 3 days: ±1 day
             const date = new Date(dateStr);
@@ -1394,12 +1326,6 @@ function placeTraceApp() {
             this.filterManager.temporal.end = endStr;
             
             // Add filter chip
-            this.addFilter({
-                id: 'date-range',
-                type: 'date',
-                emoji: '📅',
-                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
-            });
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1425,7 +1351,6 @@ function placeTraceApp() {
                 this.spatialFilterCircle = null;
             }
             // Remove spatial chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Calculate week: ±3 days
             const date = new Date(dateStr);
@@ -1442,12 +1367,6 @@ function placeTraceApp() {
             this.filterManager.temporal.end = endStr;
             
             // Add filter chip
-            this.addFilter({
-                id: 'date-range',
-                type: 'date',
-                emoji: '📅',
-                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
-            });
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1473,7 +1392,6 @@ function placeTraceApp() {
                 this.spatialFilterCircle = null;
             }
             // Remove spatial chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Calculate month: ±15 days
             const date = new Date(dateStr);
@@ -1490,12 +1408,6 @@ function placeTraceApp() {
             this.filterManager.temporal.end = endStr;
             
             // Add filter chip
-            this.addFilter({
-                id: 'date-range',
-                type: 'date',
-                emoji: '📅',
-                label: `${this.formatDateShort(startStr)} - ${this.formatDateShort(endStr)}`
-            });
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1521,7 +1433,6 @@ function placeTraceApp() {
                 this.spatialFilterCircle = null;
             }
             // Remove spatial chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'spatial');
             
             // Get full year
             const date = new Date(dateStr);
@@ -1534,12 +1445,6 @@ function placeTraceApp() {
             this.filterManager.temporal.end = endStr;
             
             // Add filter chip
-            this.addFilter({
-                id: 'date-range',
-                type: 'date',
-                emoji: '📅',
-                label: `${year}`
-            });
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1556,7 +1461,6 @@ function placeTraceApp() {
             // Clear date filter state (time and space are mutually exclusive)
             this.filterManager.clearTemporal();
             // Remove date chip from UI
-            this.activeFilters = this.activeFilters.filter(f => f.id !== 'date-range');
             
             // Set radius first, then call setSpatialFilter
             this.filterManager.spatial.radius_km = radius_km;
@@ -1787,7 +1691,6 @@ function placeTraceApp() {
             }
             
             // Clear all filter chips
-            this.activeFilters = [];
         }
     };
 }
