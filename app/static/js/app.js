@@ -1626,13 +1626,38 @@ function placeTraceApp() {
         selectVisitFromTable(visit) {
             this.selectedVisit = visit;
             
-            // Only center map if visit is outside current viewport
             const bounds = this.map.getBounds();
             const visitLatLng = L.latLng(visit.latitude, visit.longitude);
             
+            // Check if visit is outside viewport
             if (!bounds.contains(visitLatLng)) {
-                // Visit is outside viewport - center on it
-                this.map.setView([visit.latitude, visit.longitude], this.map.getZoom());
+                // Outside viewport - pan to center it
+                this.map.panTo(visitLatLng, {
+                    animate: true,
+                    duration: 0.5
+                });
+            } else {
+                // Inside viewport - check if it's near the edge (within 20% margin)
+                const mapSize = this.map.getSize();
+                const point = this.map.latLngToContainerPoint(visitLatLng);
+                
+                const marginX = mapSize.x * 0.2;
+                const marginY = mapSize.y * 0.2;
+                
+                const nearEdge = 
+                    point.x < marginX || 
+                    point.x > mapSize.x - marginX ||
+                    point.y < marginY || 
+                    point.y > mapSize.y - marginY;
+                
+                if (nearEdge) {
+                    // Near edge - pan to center it
+                    this.map.panTo(visitLatLng, {
+                        animate: true,
+                        duration: 0.5
+                    });
+                }
+                // Otherwise, don't move (visit is comfortably visible)
             }
             
             // Re-render markers to highlight selected visit
