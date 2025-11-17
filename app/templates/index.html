@@ -109,9 +109,10 @@
                 </div>
             </div>
             
-            <!-- Visit Table Toggle -->
-            <div class="p-4 border-b border-gray-200">
-                <div class="flex gap-2">
+            <!-- Consolidated Filters Panel (Always Visible) -->
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <!-- Buttons Row -->
+                <div class="flex gap-2 mb-4 pb-4 border-b border-gray-200">
                     <button @click="showVisitTable = !showVisitTable; if (showVisitTable) loadVisitTableData()" 
                             class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm border border-gray-300 hover:bg-gray-300"
                             x-text="showVisitTable ? 'Hide Table' : 'Show Table'">
@@ -122,158 +123,133 @@
                         Clear Filters
                     </button>
                 </div>
+                
+                <!-- Show Tracks Section -->
+                <div class="mb-4 pb-4 border-b border-gray-200">
+                    <label class="flex items-center gap-2 cursor-pointer mb-3">
+                        <input type="checkbox" 
+                               x-model="showMovement"
+                               @change="toggleMovement()"
+                               class="rounded">
+                        <span class="text-sm font-semibold">⚡ Show Tracks</span>
+                    </label>
+                    
+                    <!-- Day navigation -->
+                    <div class="flex items-center gap-2 mb-2">
+                        <button @click="prevDay()" 
+                                :disabled="!showMovement"
+                                class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                            ←
+                        </button>
+                        <input type="date" 
+                               x-model="selectedDay"
+                               @change="loadMovements()"
+                               :disabled="!showMovement"
+                               class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                        <button @click="nextDay()" 
+                                :disabled="!showMovement"
+                                class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                            →
+                        </button>
+                    </div>
+                    
+                    <!-- Show all nearby visits -->
+                    <label class="flex items-center gap-2 cursor-pointer"
+                           :class="!showMovement && 'opacity-50 cursor-not-allowed'">
+                        <input type="checkbox"
+                               x-model="showAllNearbyVisits"
+                               @change="toggleShowAllNearbyVisits()"
+                               :disabled="!showMovement"
+                               class="rounded">
+                        <span class="text-sm">Show all nearby visits</span>
+                    </label>
+                </div>
+                
+                <!-- Date Filter Section -->
+                <div class="mb-4 pb-4 border-b border-gray-200">
+                    <label class="flex items-center gap-2 cursor-pointer mb-3">
+                        <input type="checkbox"
+                               x-model="timeFilterEnabled"
+                               @change="toggleTimeFilter()"
+                               class="rounded">
+                        <span class="text-sm font-semibold">📅 Date Filter</span>
+                    </label>
+                    
+                    <!-- Start date -->
+                    <div class="mb-2 flex items-center gap-1">
+                        <label class="text-xs text-gray-700 w-12">Start</label>
+                        <input type="date" 
+                               x-model="startDate"
+                               @change="onStartDateChange()"
+                               :disabled="!timeFilterEnabled"
+                               class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                    </div>
+                    
+                    <!-- End date -->
+                    <div class="mb-2 flex items-center gap-1">
+                        <label class="text-xs text-gray-700 w-12">End</label>
+                        <input type="date" 
+                               x-model="endDate"
+                               @change="onEndDateChange()"
+                               :disabled="!timeFilterEnabled"
+                               class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
+                    </div>
+                    
+                    <!-- Quick preset buttons (centered) -->
+                    <div class="flex justify-center flex-wrap gap-1">
+                        <button @click="setPastWeek()" 
+                                :disabled="!timeFilterEnabled"
+                                class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Past Week
+                        </button>
+                        <button @click="setPastMonth()" 
+                                :disabled="!timeFilterEnabled"
+                                class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Past Month
+                        </button>
+                        <button @click="setPastYear()" 
+                                :disabled="!timeFilterEnabled"
+                                class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Past Year
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Radius Filter Section -->
+                <div>
+                    <label class="flex items-center gap-2 cursor-pointer mb-3">
+                        <input type="checkbox"
+                               x-model="spaceFilterEnabled"
+                               @change="toggleSpaceFilter()"
+                               class="rounded">
+                        <span class="text-sm font-semibold">📍 Radius Filter</span>
+                    </label>
+                    
+                    <!-- Radius slider -->
+                    <div class="mb-2 flex items-center gap-2">
+                        <input type="range"
+                               min="0"
+                               max="6"
+                               step="1"
+                               :value="getRadiusSliderPosition()"
+                               @input="setRadiusFromSlider(Number($event.target.value))"
+                               :disabled="!spaceFilterEnabled"
+                               class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="text-xs text-gray-700 min-w-[3rem] text-right" 
+                              x-text="filterManager.spatial.radius_km + ' km'"></span>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-2" 
+                       x-show="filterManager.spatial.lat === null">💡 Click map to set center point</p>
+                    <p class="text-xs text-gray-700 mt-2" 
+                       x-show="filterManager.spatial.lat !== null"
+                       x-text="'📍 ' + filterManager.spatial.lat?.toFixed(5) + ', ' + filterManager.spatial.lon?.toFixed(5) + '\u00A0\u00A0🔷 ' + encodeGeohash(filterManager.spatial.lat, filterManager.spatial.lon, 10)"></p>
+                </div>
             </div>
             
             <!-- Trip Selector -->
             <div class="flex-1 overflow-y-auto">
                 <div class="p-4">
-                    <!-- Movement Tracks (Collapsible) -->
-                    <div class="mb-4 pb-4 border-b border-gray-200">
-                        <button @click="showMovementSection = !showMovementSection" 
-                                class="w-full flex items-center justify-between p-3 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
-                            <span class="text-sm font-semibold text-gray-700">⚡ Movements</span>
-                            <span class="text-gray-600 font-bold" x-text="showMovementSection ? '−' : '+'"></span>
-                        </button>
-                        <div x-show="showMovementSection" x-collapse class="mt-3">
-                            <!-- Show/hide toggle (above date picker) -->
-                            <label class="flex items-center gap-2 cursor-pointer mb-3">
-                                <input type="checkbox" 
-                                       x-model="showMovement"
-                                       @change="toggleMovement()"
-                                       class="rounded">
-                                <span class="text-sm">Show tracks</span>
-                            </label>
-                            
-                            <!-- Day navigation (always visible, disabled when unchecked) -->
-                            <div class="flex items-center gap-2 mb-3">
-                                <button @click="prevDay()" 
-                                        :disabled="!showMovement"
-                                        class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                    ←
-                                </button>
-                                <input type="date" 
-                                       x-model="selectedDay"
-                                       @change="loadMovements()"
-                                       :disabled="!showMovement"
-                                       class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
-                                <button @click="nextDay()" 
-                                        :disabled="!showMovement"
-                                        class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                    →
-                                </button>
-                            </div>
-                            
-                            <!-- Show all nearby visits toggle (always visible, disabled when tracks are off) -->
-                            <label class="flex items-center gap-2 cursor-pointer"
-                                   :class="!showMovement && 'opacity-50 cursor-not-allowed'">
-                                <input type="checkbox"
-                                       x-model="showAllNearbyVisits"
-                                       @change="toggleShowAllNearbyVisits()"
-                                       :disabled="!showMovement"
-                                       class="rounded">
-                                <span class="text-sm">Show all nearby visits</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Time Filters (Collapsible) -->
-                    <div class="mb-4 pb-4 border-b border-gray-200">
-                        <button @click="showDateFilter = !showDateFilter" 
-                                class="w-full flex items-center justify-between p-3 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
-                            <span class="text-sm font-semibold text-gray-700">📅 Time Filters</span>
-                            <span class="text-gray-600 font-bold" x-text="showDateFilter ? '−' : '+'"></span>
-                        </button>
-                        <div x-show="showDateFilter" x-collapse class="mt-2 p-4 bg-gray-50 rounded">
-                            <!-- Enable checkbox -->
-                            <div class="mb-3">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox"
-                                           x-model="timeFilterEnabled"
-                                           @change="toggleTimeFilter()"
-                                           class="rounded">
-                                    <span class="text-sm font-semibold">Enable</span>
-                                </label>
-                            </div>
-                            
-                            <!-- Start date -->
-                            <div class="mb-2 flex items-center gap-1">
-                                <label class="text-sm text-gray-700 w-12">Start</label>
-                                <input type="date" 
-                                       x-model="startDate"
-                                       @change="onStartDateChange()"
-                                       :disabled="!timeFilterEnabled"
-                                       class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            </div>
-                            
-                            <!-- End date -->
-                            <div class="mb-3 flex items-center gap-1">
-                                <label class="text-sm text-gray-700 w-12">End</label>
-                                <input type="date" 
-                                       x-model="endDate"
-                                       @change="onEndDateChange()"
-                                       :disabled="!timeFilterEnabled"
-                                       class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            </div>
-                            
-                            <!-- Quick preset buttons -->
-                            <div class="flex flex-wrap gap-1">
-                                <button @click="setPastWeek()" 
-                                        class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50">
-                                    Past Week
-                                </button>
-                                <button @click="setPastMonth()" 
-                                        class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50">
-                                    Past Month
-                                </button>
-                                <button @click="setPastYear()" 
-                                        class="text-xs px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50">
-                                    Past Year
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Space Filters (Collapsible) -->
-                    <div class="mb-4 pb-4 border-b border-gray-200">
-                        <button @click="showRadiusSection = !showRadiusSection" 
-                                class="w-full flex items-center justify-between p-3 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
-                            <span class="text-sm font-semibold text-gray-700">📍 Space Filters</span>
-                            <span class="text-gray-600 font-bold" x-text="showRadiusSection ? '−' : '+'"></span>
-                        </button>
-                        <div x-show="showRadiusSection" x-collapse class="mt-2 p-4 bg-gray-50 rounded">
-                            <!-- Enable checkbox -->
-                            <div class="mb-3">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox"
-                                           x-model="spaceFilterEnabled"
-                                           @change="toggleSpaceFilter()"
-                                           class="rounded">
-                                    <span class="text-sm font-semibold">Enable</span>
-                                </label>
-                            </div>
-                            
-                            <!-- Radius slider -->
-                            <div class="mb-2 flex items-center gap-2">
-                                <input type="range"
-                                       min="0"
-                                       max="6"
-                                       step="1"
-                                       :value="getRadiusSliderPosition()"
-                                       @input="setRadiusFromSlider(Number($event.target.value))"
-                                       :disabled="!spaceFilterEnabled"
-                                       class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span class="text-sm text-gray-700 min-w-[3rem] text-right" 
-                                      x-text="filterManager.spatial.radius_km + ' km'"></span>
-                            </div>
-                            
-                            <p class="text-xs text-gray-500 mt-3" 
-                               x-show="filterManager.spatial.lat === null">💡 Click map to set center point</p>
-                            <p class="text-xs text-gray-700 mt-3" 
-                               x-show="filterManager.spatial.lat !== null"
-                               x-text="'📍 ' + filterManager.spatial.lat?.toFixed(5) + ', ' + filterManager.spatial.lon?.toFixed(5) + '\u00A0\u00A0🔷 ' + encodeGeohash(filterManager.spatial.lat, filterManager.spatial.lon, 10)"></p>
-                        </div>
-                    </div>
-                    
                     <!-- Trip Explorer (Collapsible) -->
                     <div class="mb-4 pb-4 border-b border-gray-200">
                         <button @click="showTripsSection = !showTripsSection"

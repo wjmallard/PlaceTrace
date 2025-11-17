@@ -1273,18 +1273,23 @@ function placeTraceApp() {
                 // Turning OFF tracks
                 this.clearMovementLayer();
                 
-                // Clear saved state and reload visits for current viewport
-                this.savedVisitState = null;
-                await this.loadRecentVisits();
+                // Only reload visits if we had actually loaded movement data
+                // (savedVisitState being set indicates we changed the visit state)
+                if (this.savedVisitState) {
+                    this.savedVisitState = null;
+                    await this.loadRecentVisits();
+                }
             }
         },
         
         // Toggle show all nearby visits
         async toggleShowAllNearbyVisits() {
             if (this.showAllNearbyVisits) {
-                // Enabling show all - load visits in current viewport
-                this.savedVisitState = null;
-                await this.loadRecentVisits();
+                // Enabling show all - only reload if we have movement data loaded
+                if (this.showMovement && this.selectedDay && this.savedVisitState) {
+                    this.savedVisitState = null;
+                    await this.loadRecentVisits();
+                }
             } else {
                 // Disabling show all - show only day visits
                 if (this.showMovement && this.selectedDay) {
