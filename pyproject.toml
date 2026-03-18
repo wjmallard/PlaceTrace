@@ -19,6 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
+pt = "placetrace.cli:main"
 pt-web = "placetrace.web:main"
 pt-import-visits = "placetrace.pipeline.import_visits:main"
 pt-import-movements = "placetrace.pipeline.import_movements:main"
