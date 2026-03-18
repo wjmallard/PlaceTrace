@@ -1,6 +1,8 @@
 # Pipeline
 
-Run in order:
+Run all steps at once with `pt-ingest`, or resume from a step with `pt-ingest --from <step>`.
+
+Individual steps, in order:
 
 1. `pt-import-visits` — Import visits from Google Timeline JSON
 2. `pt-import-movements` — Import movements/activities from Google Timeline JSON

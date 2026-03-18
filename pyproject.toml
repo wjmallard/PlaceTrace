@@ -21,6 +21,7 @@ dependencies = [
 [project.scripts]
 pt = "placetrace.cli:main"
 pt-web = "placetrace.web:main"
+pt-ingest = "placetrace.pipeline.ingest:main"
 pt-import-visits = "placetrace.pipeline.import_visits:main"
 pt-import-movements = "placetrace.pipeline.import_movements:main"
 pt-import-photos = "placetrace.pipeline.import_photos:main"
@@ -28,9 +29,9 @@ pt-link-photos = "placetrace.pipeline.link_photos:main"
 pt-geocode = "placetrace.pipeline.geocode:main"
 pt-detect-trips = "placetrace.pipeline.detect_trips:main"
 pt-generate-thumbnails = "placetrace.pipeline.generate_thumbnails:main"
-pt-places-find = "placetrace.places.find:main"
-pt-places-manage = "placetrace.places.manage:main"
-pt-places-query = "placetrace.places.query:main"
+pt-find-places = "placetrace.places.find:main"
+pt-manage-places = "placetrace.places.manage:main"
+pt-query = "placetrace.places.query:main"
 
 [build-system]
 requires = ["hatchling"]

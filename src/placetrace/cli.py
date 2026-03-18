@@ -3,28 +3,31 @@
 import sys
 
 
-COMMANDS = {
-    "pt-web": "Start the web UI",
-    "pt-import-visits": "Import visits from Google Timeline JSON",
-    "pt-import-movements": "Import movements from Google Timeline JSON",
-    "pt-import-photos": "Import photos from Google Takeout directories",
-    "pt-link-photos": "Link photos to visits via spatio-temporal matching",
-    "pt-geocode": "Batch reverse-geocode visits and photos",
-    "pt-detect-trips": "Detect and categorize trips from visit history",
-    "pt-generate-thumbnails": "Generate photo thumbnails for the web UI",
-    "pt-places-find": "Interactive home/work location finder",
-    "pt-places-manage": "Auto-detect and manage home/work locations",
-    "pt-places-query": "Query location history from the command line",
-}
-
-
 def main():
+    verbose = "--all" in sys.argv
+
     print("PlaceTrace — available commands:\n")
-    for cmd, desc in COMMANDS.items():
-        print(f"  {cmd:<25} {desc}")
+    print(f"  {"pt-web":<25} Start the web UI")
+    print(f"  {"pt-ingest":<25} Run the full ingest pipeline")
+    print(f"  {"pt-query":<25} Query location history from the CLI")
+
+    print(f"\nConfiguration:\n")
+    print(f"  {"pt-find-places":<25} Interactive home/work location finder")
+    print(f"  {"pt-manage-places":<25} Auto-detect and manage home/work locations")
+
+    if verbose:
+        print(f"\nPipeline steps (also available individually):\n")
+        print(f"  {"pt-import-visits":<25} Import visits from Google Timeline JSON")
+        print(f"  {"pt-import-movements":<25} Import movements from Google Timeline JSON")
+        print(f"  {"pt-import-photos":<25} Import photos from Google Takeout directories")
+        print(f"  {"pt-link-photos":<25} Link photos to visits via spatio-temporal matching")
+        print(f"  {"pt-geocode":<25} Batch reverse-geocode visits and photos")
+        print(f"  {"pt-detect-trips":<25} Detect and categorize trips from visit history")
+        print(f"  {"pt-generate-thumbnails":<25} Generate photo thumbnails for the web UI")
+    else:
+        print(f"\nRun pt --all to see individual pipeline steps.")
+
     print()
-    print("Run any command with --help for more info.")
-    print("Example: uv run pt-web")
 
 
 if __name__ == "__main__":

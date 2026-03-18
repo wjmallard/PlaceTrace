@@ -502,27 +502,26 @@ def parse_breadcrumb_trail(obj):
     }
 
 
-def import_movements_to_database(conn, movements):
+def import_movements_to_database(conn, movements, force=False):
     """
     Import movements into Movements table.
     Links to adjacent visits using temporal and spatial proximity.
     """
     cursor = conn.cursor()
-    
+
     # Check if table is empty
     cursor.execute("SELECT COUNT(*) as count FROM Movements")
     existing_count = cursor.fetchone()['count']
-    
+
     if existing_count > 0:
-        print(f"\n⚠ Movements table already has {existing_count:,} records")
-        response = input("Delete existing records and re-import? (y/N): ")
-        if response.lower() == 'y':
-            print("Deleting existing movements...")
+        if force:
+            print(f"\n⚠ Deleting {existing_count:,} existing movements (--force)")
             cursor.execute("DELETE FROM Movements")
             conn.commit()
-            print("✓ Deleted existing records")
         else:
-            print("Aborting import")
+            print(f"\n✓ Movements table already has {existing_count:,} records, skipping")
+            print("  To re-import, run: pt-import-movements --force")
+            cursor.close()
             return 0
     
     print("\nImporting movements...")
@@ -754,8 +753,9 @@ def main():
         print(f"✓ Total movements to import: {len(movements):,}")
         
         # Import to database
-        imported = import_movements_to_database(conn, movements)
-        
+        force = '--force' in sys.argv
+        imported = import_movements_to_database(conn, movements, force=force)
+
         if imported > 0:
             # Print summary
             print_movement_summary(conn)
