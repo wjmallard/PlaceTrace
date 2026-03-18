@@ -291,7 +291,7 @@
                                                         <span x-text="formatDateRange(trip.local_start_date, trip.local_end_date)"></span>
                                                     </div>
                                                     <div class="text-xs text-gray-500 mt-1">
-                                                        <span x-text="trip.visit_count + ' visits · ' + trip.photo_count + ' photos'"></span>
+                                                        <span x-text="trip.visit_count + ' visits'"></span>
                                                     </div>
                                                 </button>
                                             </template>
@@ -314,7 +314,7 @@
                                             <span x-text="formatDateRange(trip.local_start_date, trip.local_end_date)"></span>
                                         </div>
                                         <div class="text-xs text-gray-500 mt-1">
-                                            <span x-text="trip.visit_count + ' visits · ' + trip.photo_count + ' photos'"></span>
+                                            <span x-text="trip.visit_count + ' visits'"></span>
                                         </div>
                                     </button>
                                 </template>
@@ -402,11 +402,6 @@
                                 Duration <span x-show="visitTableSort.column === 'duration_minutes'" 
                                                x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
                             </th>
-                            <th @click="sortVisitTable('photo_count')" 
-                                class="px-3 py-2 text-left cursor-pointer hover:bg-gray-200">
-                                Photos <span x-show="visitTableSort.column === 'photo_count'" 
-                                             x-text="visitTableSort.ascending ? '↑' : '↓'"></span>
-                            </th>
                             <th class="px-3 py-2 text-left">Type</th>
                         </tr>
                     </thead>
@@ -422,7 +417,6 @@
                                 <td class="px-3 py-2" x-text="visit.local_start_date"></td>
                                 <td class="px-3 py-2" x-text="formatTime(visit.local_start_time)"></td>
                                 <td class="px-3 py-2" x-text="formatDuration(visit.duration_minutes)"></td>
-                                <td class="px-3 py-2" x-text="visit.photo_count"></td>
                                 <td class="px-3 py-2 text-xs" x-text="visit.semantic_type || '-'"></td>
                             </tr>
                         </template>

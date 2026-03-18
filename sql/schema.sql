@@ -1,5 +1,5 @@
 --
--- Unified Location & Photo Archive Database Schema
+-- PlaceTrace Database Schema
 -- PostgreSQL with PostGIS
 --
 
@@ -63,7 +63,7 @@ CREATE TABLE Visits (
     location_id INTEGER REFERENCES Locations(id),
     
     -- Visit classification
-    visit_type TEXT,                    -- 'timeline', 'photo_session', 'home', 'work'
+    visit_type TEXT,                    -- 'timeline', 'home', 'work'
     semantic_type TEXT,                 -- Google's classification (HOME, WORK, etc.)
     
     -- Google Timeline metadata
@@ -133,77 +133,6 @@ CREATE INDEX idx_movements_following_visit ON Movements(following_visit_id);
 CREATE INDEX idx_movements_route ON Movements USING GIST(route_geometry) WHERE route_geometry IS NOT NULL;
 
 -- ============================================================================
--- Photos Table - Photo archive with metadata
--- ============================================================================
-
-CREATE TABLE Photos (
-    id SERIAL PRIMARY KEY,
-    
-    -- File information
-    file_path TEXT NOT NULL,
-    file_hash TEXT NOT NULL UNIQUE,
-    file_mtime TIMESTAMP,               -- File modification time (for fast resume checks)
-    original_filename TEXT,
-    file_size_bytes BIGINT,
-    media_type TEXT,                    -- 'image/jpeg', 'image/png', etc.
-    
-    -- Image properties
-    width INTEGER,
-    height INTEGER,
-    
-    -- Temporal data (timezone-aware, best available source)
-    capture_datetime TIMESTAMP WITH TIME ZONE,
-    exif_datetime TIMESTAMP,                -- Naive EXIF datetime (no timezone)
-    datetime_source TEXT CHECK (datetime_source IN 
-        ('json_sidecar', 'exif_gps_tz', 'exif_naive', NULL)
-    ),
-    
-    -- Local time representation (wall-clock time at photo location)
-    local_date DATE,                    -- Calendar date in photo's timezone
-    local_time TIME,                    -- Wall-clock time in photo's timezone
-    
-    -- Spatial data (from EXIF, NULL for ~50% of photos)
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-    location_id INTEGER REFERENCES Locations(id),
-    
-    -- Link to visit
-    visit_id BIGINT REFERENCES Visits(id),
-    
-    -- Camera metadata (from EXIF)
-    camera_make TEXT,
-    camera_model TEXT,
-    lens_model TEXT,
-    focal_length_mm DOUBLE PRECISION,
-    aperture_f_number DOUBLE PRECISION,
-    shutter_speed_seconds DOUBLE PRECISION,
-    iso INTEGER,
-    flash_fired BOOLEAN,
-    
-    -- Sidecar metadata (from Google Photos JSON, for reference)
-    sidecar_latitude DOUBLE PRECISION,
-    sidecar_longitude DOUBLE PRECISION,
-    google_photo_id TEXT,
-    
-    -- Processing metadata
-    imported_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    thumbnail_path TEXT
-);
-
--- Indexes for Photos
-CREATE INDEX idx_photos_capture_datetime ON Photos(capture_datetime);
-CREATE INDEX idx_photos_local_date ON Photos(local_date);
-CREATE INDEX idx_photos_location_id ON Photos(location_id) WHERE location_id IS NOT NULL;
-CREATE INDEX idx_photos_visit_id ON Photos(visit_id) WHERE visit_id IS NOT NULL;
-CREATE INDEX idx_photos_file_hash ON Photos(file_hash);
-CREATE INDEX idx_photos_thumbnail_path ON Photos(thumbnail_path) WHERE thumbnail_path IS NULL;
-
--- Spatial index for photos with coordinates
-CREATE INDEX idx_photos_spatial ON Photos 
-    USING GIST(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326))
-    WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
-
--- ============================================================================
 -- Trips Table - Detected trip records
 -- ============================================================================
 
@@ -246,14 +175,6 @@ CREATE TABLE Trip_Visits (
     PRIMARY KEY (trip_id, visit_id)
 );
 
-CREATE TABLE Trip_Photos (
-    trip_id BIGINT REFERENCES Trips(id) ON DELETE CASCADE,
-    photo_id INTEGER REFERENCES Photos(id) ON DELETE CASCADE,
-    PRIMARY KEY (trip_id, photo_id)
-);
-
 -- Indexes for junction tables
 CREATE INDEX idx_trip_visits_trip_id ON Trip_Visits(trip_id);
 CREATE INDEX idx_trip_visits_visit_id ON Trip_Visits(visit_id);
-CREATE INDEX idx_trip_photos_trip_id ON Trip_Photos(trip_id);
-CREATE INDEX idx_trip_photos_photo_id ON Trip_Photos(photo_id);

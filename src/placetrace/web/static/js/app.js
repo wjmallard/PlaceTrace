@@ -318,17 +318,13 @@ function placeTraceApp() {
                 // Check if this is the selected visit
                 const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
                 
-                // Photos get a yellow center dot
-                const hasPhotos = visit.photo_count > 0;
-                
                 // Selected visits are red, others are blue
                 const fillColor = isSelected ? '#DC2626' : '#3B82F6';  // darker red or blue
                 const borderColor = isSelected ? '#991B1B' : '#1E40AF';  // dark red or dark blue
-                
-                // Create custom marker with optional center dot
+
                 const size = 12;
                 const borderWidth = isSelected ? 3 : 1;
-                
+
                 const markerHtml = `
                     <div style="
                         width: ${size}px;
@@ -337,20 +333,7 @@ function placeTraceApp() {
                         border: ${borderWidth}px solid ${borderColor};
                         border-radius: 50%;
                         opacity: 0.9;
-                        position: relative;
                     ">
-                        ${hasPhotos ? `
-                            <div style="
-                                position: absolute;
-                                top: 50%;
-                                left: 50%;
-                                transform: translate(-50%, -50%);
-                                width: 4px;
-                                height: 4px;
-                                background-color: #FDE047;
-                                border-radius: 50%;
-                            "></div>
-                        ` : ''}
                     </div>
                 `;
                 
@@ -376,7 +359,6 @@ function placeTraceApp() {
                         <div class="text-gray-600">
                             ${visit.duration_minutes} minutes
                         </div>
-                        ${visit.photo_count > 0 ? `<div class="text-blue-600 mt-1">${visit.photo_count} photos</div>` : ''}
                     </div>
                 `;
                 

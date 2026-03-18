@@ -6,7 +6,7 @@ GET /api/stats/movement - Movement aggregate statistics by activity type
 
 from flask import Blueprint, jsonify, current_app
 from sqlalchemy import func
-from placetrace.web.models import Movement, Visit, Photo, Trip, Location
+from placetrace.web.models import Movement, Visit, Trip, Location
 from placetrace.web.database import db
 
 bp = Blueprint('stats', __name__)
@@ -18,12 +18,11 @@ def get_overview():
     Get overall statistics across all data
     
     Returns:
-        JSON response with counts of visits, photos, trips, movements, and locations
+        JSON response with counts of visits, trips, movements, and locations
     """
     try:
         # Count totals
         visit_count = db.session.execute(db.select(func.count(Visit.id))).scalar() or 0
-        photo_count = db.session.execute(db.select(func.count(Photo.id))).scalar() or 0
         trip_count = db.session.execute(db.select(func.count(Trip.id))).scalar() or 0
         movement_count = db.session.execute(db.select(func.count(Movement.id))).scalar() or 0
         location_count = db.session.execute(db.select(func.count(Location.id))).scalar() or 0
@@ -33,13 +32,6 @@ def get_overview():
             db.select(
                 func.min(Visit.start_time).label('earliest'),
                 func.max(Visit.end_time).label('latest')
-            )
-        ).first()
-        
-        photo_date_range = db.session.execute(
-            db.select(
-                func.min(Photo.capture_datetime).label('earliest'),
-                func.max(Photo.capture_datetime).label('latest')
             )
         ).first()
         
@@ -54,7 +46,6 @@ def get_overview():
         return jsonify({
             'counts': {
                 'visits': visit_count,
-                'photos': photo_count,
                 'trips': trip_count,
                 'movements': movement_count,
                 'locations': location_count
@@ -63,10 +54,6 @@ def get_overview():
                 'visits': {
                     'earliest': visit_date_range.earliest.isoformat() if visit_date_range.earliest else None,
                     'latest': visit_date_range.latest.isoformat() if visit_date_range.latest else None
-                },
-                'photos': {
-                    'earliest': photo_date_range.earliest.isoformat() if photo_date_range.earliest else None,
-                    'latest': photo_date_range.latest.isoformat() if photo_date_range.latest else None
                 }
             },
             'movement_totals': {

@@ -7,7 +7,7 @@ GET /api/trips/<id> - Get trip details with full visit list
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from datetime import datetime
-from placetrace.web.models import Trip, Visit, Photo, trip_visits, trip_photos
+from placetrace.web.models import Trip, Visit, trip_visits
 from placetrace.web.database import db
 
 bp = Blueprint('trips', __name__)
@@ -16,17 +16,17 @@ bp = Blueprint('trips', __name__)
 @bp.route('/trips')
 def get_trips():
     """
-    Get trips with visit and photo counts
-    
+    Get trips with visit counts
+
     Query parameters:
         - category: Filter by trip category ('day', 'short', 'long')
         - start_date: ISO datetime (trips overlapping after this date)
         - end_date: ISO datetime (trips overlapping before this date)
         - limit: Maximum results (default 100)
         - offset: Pagination offset (default 0)
-    
+
     Returns:
-        JSON response with trips array, each including visit/photo counts
+        JSON response with trips array, each including visit counts
     """
     try:
         # Parse query parameters
@@ -125,12 +125,11 @@ def get_trips():
         # Execute query
         trips = db.session.execute(query).scalars().all()
         
-        # Get visit and photo counts for each trip
+        # Get visit counts for each trip
         trip_ids = [trip.id for trip in trips]
-        
+
         visit_counts = {}
-        photo_counts = {}
-        
+
         if trip_ids:
             # Count visits per trip
             visit_count_query = db.select(
@@ -139,20 +138,9 @@ def get_trips():
             ).where(
                 trip_visits.c.trip_id.in_(trip_ids)
             ).group_by(trip_visits.c.trip_id)
-            
+
             visit_results = db.session.execute(visit_count_query).all()
             visit_counts = {row[0]: row[1] for row in visit_results}
-            
-            # Count photos per trip
-            photo_count_query = db.select(
-                trip_photos.c.trip_id,
-                func.count(trip_photos.c.photo_id).label('count')
-            ).where(
-                trip_photos.c.trip_id.in_(trip_ids)
-            ).group_by(trip_photos.c.trip_id)
-            
-            photo_results = db.session.execute(photo_count_query).all()
-            photo_counts = {row[0]: row[1] for row in photo_results}
         
         # Format response
         trips_data = []
@@ -174,8 +162,7 @@ def get_trips():
                 'local_end_time': trip.local_end_time.isoformat() if trip.local_end_time else None,
                 'category': trip.trip_category,
                 'display_name': display_name,
-                'visit_count': visit_counts.get(trip.id, 0),
-                'photo_count': photo_counts.get(trip.id, 0)
+                'visit_count': visit_counts.get(trip.id, 0)
             })
         
         return jsonify({
@@ -213,13 +200,6 @@ def get_trip_detail(trip_id):
         if not trip:
             return jsonify({'error': f'Trip {trip_id} not found', 'status': 404}), 404
         
-        # Get photo count (photos are fetched separately via /api/photos?trip_id=X)
-        photo_count_query = db.select(
-            func.count(trip_photos.c.photo_id)
-        ).where(trip_photos.c.trip_id == trip_id)
-        
-        photo_count = db.session.execute(photo_count_query).scalar() or 0
-        
         # Use display_name if available, fallback to cities array
         display_name = trip.display_name
         if not display_name and trip.cities:
@@ -242,11 +222,6 @@ def get_trip_detail(trip_id):
             else:
                 lat, lng = None, None
             
-            # Get photo count for this visit
-            visit_photo_count = db.session.execute(
-                db.select(func.count(Photo.id)).where(Photo.visit_id == visit.id)
-            ).scalar() or 0
-            
             visits_data.append({
                 'id': visit.id,
                 'start_time': visit.start_time.isoformat() if visit.start_time else None,
@@ -255,8 +230,7 @@ def get_trip_detail(trip_id):
                 'latitude': lat,
                 'longitude': lng,
                 'location_name': visit.location_name,
-                'semantic_type': visit.semantic_type,
-                'photo_count': visit_photo_count
+                'semantic_type': visit.semantic_type
             })
         
         return jsonify({
@@ -270,7 +244,6 @@ def get_trip_detail(trip_id):
             'category': trip.trip_category,
             'display_name': display_name,
             'visit_count': len(visits_data),
-            'photo_count': photo_count,
             'visits': visits_data
         })
     

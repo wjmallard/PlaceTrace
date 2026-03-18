@@ -7,7 +7,7 @@ from flask import Flask
 from flask_cors import CORS
 from placetrace.config import config
 from placetrace.web.database import init_db
-from placetrace.web.routes import visits, photos, locations, trips, movements, stats, frontend
+from placetrace.web.routes import visits, locations, trips, movements, stats, frontend
 
 
 def create_app():
@@ -27,7 +27,6 @@ def create_app():
     
     # Register API blueprints
     app.register_blueprint(visits.bp, url_prefix='/api')
-    app.register_blueprint(photos.bp, url_prefix='/api')
     app.register_blueprint(locations.bp, url_prefix='/api')
     app.register_blueprint(trips.bp, url_prefix='/api')
     app.register_blueprint(movements.bp, url_prefix='/api')

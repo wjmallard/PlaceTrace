@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database configuration and operations for Unified Location & Photo Archive
+Database configuration and operations for PlaceTrace
 Handles connections to both main database and OSM boundaries database
 Provides geocoding and location management functions
 """

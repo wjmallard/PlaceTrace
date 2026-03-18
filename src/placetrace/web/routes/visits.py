@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func, and_
 from datetime import datetime
 from geoalchemy2 import Geography
-from placetrace.web.models import Visit, Photo, trip_visits
+from placetrace.web.models import Visit, trip_visits
 from placetrace.web.database import db
 
 bp = Blueprint('visits', __name__)
@@ -150,20 +150,6 @@ def get_visits():
         # Execute query
         visits = db.session.execute(query).scalars().all()
         
-        # Get photo counts for each visit (subquery approach for efficiency)
-        visit_ids = [v.id for v in visits]
-        photo_counts = {}
-        if visit_ids:
-            count_query = db.select(
-                Photo.visit_id,
-                func.count(Photo.id).label('count')
-            ).where(
-                Photo.visit_id.in_(visit_ids)
-            ).group_by(Photo.visit_id)
-            
-            counts_result = db.session.execute(count_query).all()
-            photo_counts = {row[0]: row[1] for row in counts_result}
-        
         # Format response
         visits_data = []
         for visit in visits:
@@ -191,8 +177,7 @@ def get_visits():
                 'latitude': lat,
                 'longitude': lng,
                 'location_name': visit.location_name,
-                'semantic_type': visit.semantic_type,
-                'photo_count': photo_counts.get(visit.id, 0)
+                'semantic_type': visit.semantic_type
             })
         
         return jsonify({

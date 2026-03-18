@@ -7,7 +7,7 @@ Detect and categorize trips from location history:
 - Uses PostGIS for all distance calculations
 - Checks for connecting Movements when evaluating visit gaps
 - Categorizes trips: Day Trip, Short Trip, Long Trip
-- Populates Trips, Trip_Visits, and Trip_Photos tables
+- Populates Trips and Trip_Visits tables
 
 Requirements:
 - data/home_locations.json - Date-aware home locations
@@ -111,10 +111,9 @@ def absorb_orphan_visits(conn, trips, home_locations):
     """
     Find single-visit 'trips' and merge them into adjacent trips.
     
-    Orphan visits are typically GPS glitches from photos:
+    Orphan visits are typically GPS glitches:
     - Single visit in a trip
     - Very short duration (<30 minutes)
-    - Usually just a photo location snap
     
     Logic:
     1. Identify orphan visits
@@ -651,7 +650,7 @@ def get_cities_for_trip(conn, location_ids):
 
 def insert_trips_to_database(conn, trips):
     """
-    Insert detected trips into Trips, Trip_Visits, and Trip_Photos tables.
+    Insert detected trips into Trips and Trip_Visits tables.
     Returns number of trips inserted.
     """
     if not trips:
@@ -725,15 +724,6 @@ def insert_trips_to_database(conn, trips):
                     ON CONFLICT DO NOTHING
                 """, (trip_id, visit_id))
             
-            # Insert Trip_Photos junction records (photos linked to visits in this trip)
-            cursor.execute("""
-                INSERT INTO Trip_Photos (trip_id, photo_id)
-                SELECT %s, p.id
-                FROM Photos p
-                WHERE p.visit_id = ANY(%s)
-                ON CONFLICT DO NOTHING
-            """, (trip_id, trip['visit_ids']))
-            
             # Commit every 100 trips
             if inserted % 100 == 0:
                 conn.commit()
@@ -783,10 +773,6 @@ def print_trip_summary(conn, trip_config):
     cursor.execute("SELECT COUNT(*) as count FROM Trip_Visits")
     total_trip_visits = cursor.fetchone()['count']
     
-    # Total photos in trips
-    cursor.execute("SELECT COUNT(*) as count FROM Trip_Photos")
-    total_trip_photos = cursor.fetchone()['count']
-    
     # Top destinations
     cursor.execute("""
         SELECT 
@@ -820,7 +806,6 @@ def print_trip_summary(conn, trip_config):
             print(f"  {emoji} {row['trip_category']:<15} {row['count']:>8,}")
     
     print(f"\nVisits in trips:     {total_trip_visits:>8,}")
-    print(f"Photos in trips:     {total_trip_photos:>8,}")
     
     if top_destinations:
         print(f"\nTop destinations:")
@@ -859,7 +844,6 @@ def main():
         # Wipe existing trips if --force
         if force:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM trip_photos")
             cursor.execute("DELETE FROM trip_visits")
             cursor.execute("DELETE FROM trips")
             conn.commit()
@@ -886,7 +870,7 @@ def main():
         
         if not visits:
             print("\n✗ No visits found in database")
-            print("   Import visits, photos, and movements first")
+            print("   Import visits and movements first")
             return
         
         # Step 2: Detect trips

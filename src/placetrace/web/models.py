@@ -3,8 +3,9 @@ SQLAlchemy models for PlaceTrace database
 Maps to PostgreSQL schema with PostGIS extensions
 """
 
-from sqlalchemy import Column, Integer, BigInteger, Text, Float, Boolean, DateTime, ForeignKey, Table
+from sqlalchemy import Column, Integer, BigInteger, Text, Float, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
+
 from geoalchemy2 import Geography
 from placetrace.web.database import db
 
@@ -16,14 +17,6 @@ trip_visits = Table(
     Column('trip_id', BigInteger, ForeignKey('trips.id', ondelete='CASCADE'), primary_key=True),
     Column('visit_id', BigInteger, ForeignKey('visits.id', ondelete='CASCADE'), primary_key=True)
 )
-
-trip_photos = Table(
-    'trip_photos',
-    db.Model.metadata,
-    Column('trip_id', BigInteger, ForeignKey('trips.id', ondelete='CASCADE'), primary_key=True),
-    Column('photo_id', Integer, ForeignKey('photos.id', ondelete='CASCADE'), primary_key=True)
-)
-
 
 class Location(db.Model):
     """Normalized location dictionary with administrative hierarchy"""
@@ -49,7 +42,6 @@ class Location(db.Model):
     
     # Relationships
     visits = relationship('Visit', back_populates='location_rel')
-    photos = relationship('Photo', back_populates='location_rel')
     trips = relationship('Trip', back_populates='primary_location')
     
     def format_name(self):
@@ -103,7 +95,6 @@ class Visit(db.Model):
     
     # Relationships
     location_rel = relationship('Location', back_populates='visits')
-    photos = relationship('Photo', back_populates='visit')
     trips = relationship('Trip', secondary=trip_visits, back_populates='visits')
     
     @property
@@ -126,80 +117,6 @@ class Visit(db.Model):
         if self.location_rel:
             return self.location_rel.format_name()
         return None
-
-
-class Photo(db.Model):
-    """Photo archive with metadata"""
-    __tablename__ = 'photos'
-    
-    id = Column(Integer, primary_key=True)
-    
-    # File information
-    file_path = Column(Text, nullable=False)
-    file_hash = Column(Text, nullable=False, unique=True)
-    original_filename = Column(Text)
-    file_size_bytes = Column(BigInteger)
-    media_type = Column(Text)
-    
-    # Image properties
-    width = Column(Integer)
-    height = Column(Integer)
-    
-    # Temporal data
-    capture_datetime = Column(DateTime(timezone=True))
-    
-    # Spatial data
-    latitude = Column(Float)
-    longitude = Column(Float)
-    location_id = Column(Integer, ForeignKey('locations.id'))
-    
-    # Link to visit
-    visit_id = Column(BigInteger, ForeignKey('visits.id'))
-    
-    # Camera metadata
-    camera_make = Column(Text)
-    camera_model = Column(Text)
-    lens_model = Column(Text)
-    focal_length_mm = Column(Float)
-    aperture_f_number = Column(Float)
-    shutter_speed_seconds = Column(Float)
-    iso = Column(Integer)
-    flash_fired = Column(Boolean)
-    
-    # Sidecar metadata
-    sidecar_datetime = Column(DateTime(timezone=True))
-    sidecar_latitude = Column(Float)
-    sidecar_longitude = Column(Float)
-    google_photo_id = Column(Text)
-    
-    # Processing metadata
-    imported_at = Column(DateTime(timezone=True))
-    
-    # Relationships
-    location_rel = relationship('Location', back_populates='photos')
-    visit = relationship('Visit', back_populates='photos')
-    trips = relationship('Trip', secondary=trip_photos, back_populates='photos')
-    
-    @property
-    def location_name(self):
-        """Get formatted location name"""
-        if self.location_rel:
-            return self.location_rel.format_name()
-        return None
-    
-    @property
-    def exif(self):
-        """Return EXIF metadata as dictionary"""
-        return {
-            'camera_make': self.camera_make,
-            'camera_model': self.camera_model,
-            'lens_model': self.lens_model,
-            'focal_length_mm': self.focal_length_mm,
-            'aperture_f_number': self.aperture_f_number,
-            'shutter_speed_seconds': self.shutter_speed_seconds,
-            'iso': self.iso,
-            'flash_fired': self.flash_fired
-        }
 
 
 class Trip(db.Model):
@@ -229,7 +146,6 @@ class Trip(db.Model):
     # Relationships
     primary_location = relationship('Location', back_populates='trips')
     visits = relationship('Visit', secondary=trip_visits, back_populates='trips')
-    photos = relationship('Photo', secondary=trip_photos, back_populates='trips')
 
 
 class Movement(db.Model):

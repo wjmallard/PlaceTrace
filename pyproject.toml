@@ -1,7 +1,7 @@
 [project]
 name = "placetrace"
 version = "0.1.0"
-description = "Personal location history and photo archive explorer"
+description = "Personal location history explorer"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -14,9 +14,6 @@ dependencies = [
     "pyyaml>=6.0",
     "orjson>=3.9",
     "tqdm>=4.66",
-    "pillow>=10.0",
-    "pillow-heif>=0.16",
-    "timezonefinder>=6.2",
 ]
 
 [project.scripts]
@@ -25,8 +22,6 @@ pt-web = "placetrace.web:main"
 pt-ingest = "placetrace.pipeline.ingest:main"
 pt-import-visits = "placetrace.pipeline.import_visits:main"
 pt-import-movements = "placetrace.pipeline.import_movements:main"
-pt-import-photos = "placetrace.pipeline.import_photos:main"
-pt-link-photos = "placetrace.pipeline.link_photos:main"
 pt-geocode = "placetrace.pipeline.geocode:main"
 pt-detect-trips = "placetrace.pipeline.detect_trips:main"
 pt-find-places = "placetrace.places.find:main"

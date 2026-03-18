@@ -5,7 +5,7 @@ GET /api/locations - List locations with filtering
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
-from placetrace.web.models import Location, Visit, Photo
+from placetrace.web.models import Location, Visit
 from placetrace.web.database import db
 
 bp = Blueprint('locations', __name__)
@@ -25,7 +25,7 @@ def get_locations():
         - offset: Pagination offset (default 0)
     
     Returns:
-        JSON response with locations array, each including visit/photo counts
+        JSON response with locations array, each including visit counts
     """
     try:
         # Parse query parameters
@@ -75,12 +75,11 @@ def get_locations():
         # Execute query
         locations = db.session.execute(query).scalars().all()
         
-        # Get visit and photo counts for each location
+        # Get visit counts for each location
         location_ids = [loc.id for loc in locations]
         
         visit_counts = {}
-        photo_counts = {}
-        
+
         if location_ids:
             # Count visits per location
             visit_count_query = db.select(
@@ -89,20 +88,9 @@ def get_locations():
             ).where(
                 Visit.location_id.in_(location_ids)
             ).group_by(Visit.location_id)
-            
+
             visit_results = db.session.execute(visit_count_query).all()
             visit_counts = {row[0]: row[1] for row in visit_results}
-            
-            # Count photos per location
-            photo_count_query = db.select(
-                Photo.location_id,
-                func.count(Photo.id).label('count')
-            ).where(
-                Photo.location_id.in_(location_ids)
-            ).group_by(Photo.location_id)
-            
-            photo_results = db.session.execute(photo_count_query).all()
-            photo_counts = {row[0]: row[1] for row in photo_results}
         
         # Format response
         locations_data = []
@@ -128,8 +116,7 @@ def get_locations():
                 'formatted_name': location.format_name(),
                 'centroid_latitude': lat,
                 'centroid_longitude': lng,
-                'visit_count': visit_counts.get(location.id, 0),
-                'photo_count': photo_counts.get(location.id, 0)
+                'visit_count': visit_counts.get(location.id, 0)
             })
         
         return jsonify({

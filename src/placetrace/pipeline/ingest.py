@@ -13,8 +13,6 @@ import sys
 STEPS = [
     ("import-visits",    "placetrace.pipeline.import_visits"),
     ("import-movements", "placetrace.pipeline.import_movements"),
-    ("import-photos",    "placetrace.pipeline.import_photos"),
-    ("link-photos",      "placetrace.pipeline.link_photos"),
     ("geocode",          "placetrace.pipeline.geocode"),
     ("detect-trips",     "placetrace.pipeline.detect_trips"),
 ]

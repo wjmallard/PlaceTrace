@@ -1,4 +1,4 @@
-# Unified Location & Photo Archive Configuration
+# PlaceTrace Configuration
 
 # Database Settings
 databases:
@@ -8,15 +8,6 @@ databases:
 # Source Data
 source_data:
   location_history_json: /path/to/location-history.json
-  photo_directories:
-    - /path/to/photos
-
-# Photo Visit Creation Settings
-photo_visits:
-  time_window_minutes: 30           # Cluster photos within this time window
-  distance_threshold_meters: 5      # Photos within this distance are same session
-  visit_match_time_buffer_minutes: 15   # Buffer when matching to existing visits
-  visit_match_distance_meters: 100      # Distance to match with existing visit
 
 # Trip Detection Settings
 trips:
@@ -47,7 +38,7 @@ trips:
 
 # Processing Settings
 processing:
-  num_workers: 16  # Number of parallel workers for photo processing
+  num_workers: 16  # Number of parallel workers for geocoding
 
 # Map Display Settings
 map:
@@ -57,12 +48,6 @@ map:
   tiles:
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
     attribution: 'Esri'
-
-# Photo Gallery Settings (for web interface)
-gallery:
-  thumbnail_width: 250              # Width in pixels (maintains aspect ratio)
-  default_recent_count: 100         # Number of recent photos to show by default
-  photos_per_row: 4                 # Number of thumbnails per row in gallery
 
 # Performance Settings (for web interface)
 performance:

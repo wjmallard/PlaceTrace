@@ -19,9 +19,7 @@ def main():
         print(f"\nPipeline steps (also available individually):\n")
         print(f"  {"pt-import-visits":<25} Import visits from Google Timeline JSON")
         print(f"  {"pt-import-movements":<25} Import movements from Google Timeline JSON")
-        print(f"  {"pt-import-photos":<25} Import photos from Google Takeout directories")
-        print(f"  {"pt-link-photos":<25} Link photos to visits via spatio-temporal matching")
-        print(f"  {"pt-geocode":<25} Batch reverse-geocode visits and photos")
+        print(f"  {"pt-geocode":<25} Batch reverse-geocode visits")
         print(f"  {"pt-detect-trips":<25} Detect and categorize trips from visit history")
     else:
         print(f"\nRun pt --all to see individual pipeline steps.")
