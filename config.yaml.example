@@ -21,12 +21,30 @@ photo_visits:
 
 # Trip Detection Settings
 trips:
-  day_trip_min_hours: 4
-  day_trip_max_hours: 16
-  short_trip_max_days: 4
-  long_trip_min_days: 4
-  home_buffer_km: 50                # Must be this far from home to be a trip
-  trip_gap_hours: 2                 # Gap between visits to end trip
+  detection:
+    min_distance_km: 80             # Must be this far from home to be a trip
+    max_gap_hours: 8                # Gap between visits to split trip
+    extended_gap_hours: 24          # Allow longer gaps if far from home
+    extended_gap_min_distance_km: 80
+  categories:
+    - name: Day Trip
+      emoji: 🚗
+      color: lightblue
+      min_hours: 4
+      max_hours: 16
+      description: Quick excursions - there and back in a day
+    - name: Short Trip
+      emoji: ✈️
+      color: blue
+      min_hours: 16
+      max_hours: 96
+      description: Weekend getaways and short breaks (1-4 days)
+    - name: Long Trip
+      emoji: 🌍
+      color: darkblue
+      min_hours: 96
+      max_hours: null
+      description: Extended travel (4+ days)
 
 # Processing Settings
 processing:

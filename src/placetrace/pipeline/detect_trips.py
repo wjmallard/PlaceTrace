@@ -10,9 +10,9 @@ Detect and categorize trips from location history:
 - Populates Trips, Trip_Visits, and Trip_Photos tables
 
 Requirements:
-- home_locations.json - Date-aware home locations
-- work_locations.json - Date-aware work locations
-- trip_config.json - Trip category definitions
+- data/home_locations.json - Date-aware home locations
+- data/work_locations.json - Date-aware work locations
+- trips section in config.yaml - Trip category definitions
 
 Usage:
     python 7_detect_trips.py
@@ -25,7 +25,7 @@ from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
-from placetrace.config import project_root
+from placetrace.config import config, project_root
 
 
 def load_locations_json(filename):
@@ -53,17 +53,8 @@ def load_locations_json(filename):
 
 
 def load_trip_config():
-    """Load trip configuration from trip_config.json"""
-    filepath = project_root / "data" / "trip_config.json"
-
-    if not filepath.exists():
-        raise FileNotFoundError(
-            f"Required file not found: {filepath}\n"
-            f"Please create data/trip_config.json with trip category definitions."
-        )
-    
-    with open(filepath, 'r') as f:
-        return json.load(f)
+    """Load trip configuration from config.yaml trips section."""
+    return config['trips']
 
 
 def get_home_at_date(home_locations, date):
@@ -325,9 +316,9 @@ def should_split_trip(conn, prev_visit, current_visit, home_locations, trip_conf
         return False
     
     # No activity data - use time and distance heuristics
-    max_gap_hours = trip_config['trip_detection']['max_gap_hours']
-    extended_gap_hours = trip_config['trip_detection'].get('extended_gap_hours', max_gap_hours)
-    extended_gap_min_distance = trip_config['trip_detection'].get('extended_gap_min_distance_km', 80)
+    max_gap_hours = trip_config['detection']['max_gap_hours']
+    extended_gap_hours = trip_config['detection'].get('extended_gap_hours', max_gap_hours)
+    extended_gap_min_distance = trip_config['detection'].get('extended_gap_min_distance_km', 80)
     
     if gap_hours < max_gap_hours:
         # Short gap - continue trip
@@ -398,8 +389,8 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     
     Returns list of trip dicts.
     """
-    min_distance_km = trip_config['trip_detection']['min_distance_km']
-    max_gap_hours = trip_config['trip_detection']['max_gap_hours']
+    min_distance_km = trip_config['detection']['min_distance_km']
+    max_gap_hours = trip_config['detection']['max_gap_hours']
     
     print(f"\nDetecting trips (min distance: {min_distance_km}km, max gap: {max_gap_hours}h)...")
     print("  (Using Movements to bridge travel gaps)")
@@ -512,7 +503,7 @@ def finalize_trip(conn, trip_visits, home_locations, trip_config):
     cursor.close()
     
     # Check minimum distance criteria
-    min_distance_km = trip_config['trip_detection']['min_distance_km']
+    min_distance_km = trip_config['detection']['min_distance_km']
     if distance_from_home < min_distance_km:
         return None  # Too close to home
     
@@ -549,7 +540,7 @@ def categorize_trip(duration_hours, trip_config):
     Categorize trip by duration using config thresholds.
     Returns category name or None if duration doesn't match any category.
     """
-    categories = trip_config['trip_categories']
+    categories = trip_config['categories']
     
     for category in categories:
         min_hours = category.get('min_hours', 0)
@@ -822,7 +813,7 @@ def print_trip_summary(conn, trip_config):
         for row in trips_by_category:
             # Get emoji from config
             category_info = next(
-                (c for c in trip_config['trip_categories'] if c['name'] == row['trip_category']),
+                (c for c in trip_config['categories'] if c['name'] == row['trip_category']),
                 None
             )
             emoji = category_info['emoji'] if category_info else '📍'
@@ -854,7 +845,7 @@ def main():
         
         print(f"✓ Loaded {len(home_locations)} home locations")
         print(f"✓ Loaded {len(work_locations)} work locations")
-        print(f"✓ Loaded {len(trip_config['trip_categories'])} trip categories")
+        print(f"✓ Loaded {len(trip_config['categories'])} trip categories")
         
     except FileNotFoundError as e:
         print(f"\n✗ {e}")
