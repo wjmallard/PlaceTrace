@@ -5,32 +5,10 @@ Handles connections to both main database and OSM boundaries database
 Provides geocoding and location management functions
 """
 
-import yaml
-from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
-# ============================================================================
-# Configuration
-# ============================================================================
-
-def load_config():
-    """Load configuration from config.yaml at project root"""
-    # Find project root: pipeline/db.py -> ../config.yaml
-    project_root = Path(__file__).parent.parent
-    config_path = project_root / "config.yaml"
-    
-    if not config_path.exists():
-        raise FileNotFoundError(
-            f"Config file not found: {config_path}\n"
-            f"Expected location: project_root/config.yaml"
-        )
-    
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
-
-# Load config once at module import
-config = load_config()
+from placetrace.config import config
 
 # ============================================================================
 # Database Connections

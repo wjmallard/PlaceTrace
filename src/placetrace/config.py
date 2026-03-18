@@ -24,4 +24,5 @@ def _load_config():
         return yaml.safe_load(f)
 
 
+project_root = _find_project_root()
 config = _load_config()
