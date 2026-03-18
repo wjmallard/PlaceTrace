@@ -315,36 +315,28 @@ def get_existing_photos(conn):
     Get existing photos for resume capability.
     Returns two sets:
     - existing_hashes: Set of file hashes (for duplicate detection)
-    - existing_quick: Set of (filepath, size, mtime) tuples (for fast resume check)
-    
-    Note: existing_quick only includes files that have a hash (successfully processed).
-    Files without hashes need to be reprocessed regardless of mtime.
+    - existing_quick: Set of (filepath, size) tuples (for fast resume check)
     """
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT 
+        SELECT
             file_hash,
             file_path,
-            file_size_bytes,
-            EXTRACT(EPOCH FROM file_mtime) as mtime_epoch
+            file_size_bytes
         FROM Photos
     """)
-    
+
     existing_hashes = set()
     existing_quick = set()
-    
+
     for row in cursor.fetchall():
-        # Always add hash if present
         if row['file_hash']:
             existing_hashes.add(row['file_hash'])
-            
-            # Only add to quick-check if file has hash (successfully processed)
-            # Files without hashes need reprocessing regardless of mtime
-            if row['file_path'] and row['mtime_epoch']:
+
+            if row['file_path']:
                 existing_quick.add((
                     row['file_path'],
                     row['file_size_bytes'],
-                    float(row['mtime_epoch'])
                 ))
     
     cursor.close()
@@ -367,7 +359,7 @@ def process_single_photo(args):
     try:
         # Step 1: Fast check using file metadata (stat is instant)
         file_stat = photo_path.stat()
-        quick_key = (str(photo_path), file_stat.st_size, file_stat.st_mtime)
+        quick_key = (str(photo_path), file_stat.st_size)
         
         if quick_key in existing_quick:
             # File unchanged, already in database - skip without hashing
@@ -473,7 +465,7 @@ def process_single_photo(args):
         # Only the hash and path are guaranteed
         try:
             file_stat = photo_path.stat()
-            quick_key = (str(photo_path), file_stat.st_size, file_stat.st_mtime)
+            quick_key = (str(photo_path), file_stat.st_size)
             
             if quick_key in existing_quick:
                 return None
