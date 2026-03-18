@@ -174,7 +174,6 @@ class Photo(db.Model):
     
     # Processing metadata
     imported_at = Column(DateTime(timezone=True))
-    thumbnail_path = Column(Text)
     
     # Relationships
     location_rel = relationship('Location', back_populates='photos')

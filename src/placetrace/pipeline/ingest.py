@@ -17,7 +17,6 @@ STEPS = [
     ("link-photos",      "placetrace.pipeline.link_photos"),
     ("geocode",          "placetrace.pipeline.geocode"),
     ("detect-trips",     "placetrace.pipeline.detect_trips"),
-    ("generate-thumbnails", "placetrace.pipeline.generate_thumbnails"),
 ]
 
 STEP_NAMES = [name for name, _ in STEPS]

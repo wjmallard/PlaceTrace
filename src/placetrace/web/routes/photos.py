@@ -87,7 +87,6 @@ def get_photos():
         for photo in photos:
             photos_data.append({
                 'id': photo.id,
-                'thumbnail_path': photo.thumbnail_path,
                 'file_path': photo.file_path,
                 'capture_datetime': photo.capture_datetime.isoformat() if photo.capture_datetime else None,
                 'width': photo.width,

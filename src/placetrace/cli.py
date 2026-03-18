@@ -23,7 +23,6 @@ def main():
         print(f"  {"pt-link-photos":<25} Link photos to visits via spatio-temporal matching")
         print(f"  {"pt-geocode":<25} Batch reverse-geocode visits and photos")
         print(f"  {"pt-detect-trips":<25} Detect and categorize trips from visit history")
-        print(f"  {"pt-generate-thumbnails":<25} Generate photo thumbnails for the web UI")
     else:
         print(f"\nRun pt --all to see individual pipeline steps.")
 

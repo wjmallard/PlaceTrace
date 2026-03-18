@@ -10,7 +10,6 @@ source_data:
   location_history_json: /path/to/location-history.json
   photo_directories:
     - /path/to/photos
-  thumbnails_directory: /path/to/thumbnails
 
 # Photo Visit Creation Settings
 photo_visits:

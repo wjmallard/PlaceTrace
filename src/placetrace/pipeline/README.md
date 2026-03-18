@@ -10,4 +10,3 @@ Individual steps, in order:
 4. `pt-link-photos` — Link photos to visits via spatio-temporal matching
 5. `pt-geocode` — Batch reverse-geocode visits and photos
 6. `pt-detect-trips` — Detect and categorize trips from visit history
-7. `pt-generate-thumbnails` — Generate photo thumbnails for the web UI
