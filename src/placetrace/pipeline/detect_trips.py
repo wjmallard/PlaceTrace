@@ -853,8 +853,19 @@ def main():
     
     # Connect to database
     conn = get_main_connection()
-    
+    force = '--force' in sys.argv
+
     try:
+        # Wipe existing trips if --force
+        if force:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM trip_photos")
+            cursor.execute("DELETE FROM trip_visits")
+            cursor.execute("DELETE FROM trips")
+            conn.commit()
+            cursor.close()
+            print("⚠ Deleted existing trips (--force)")
+
         # Check if Movements table has data
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) as count FROM Movements")
