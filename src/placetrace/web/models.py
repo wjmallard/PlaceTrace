@@ -6,7 +6,7 @@ Maps to PostgreSQL schema with PostGIS extensions
 from sqlalchemy import Column, Integer, BigInteger, Text, Float, Boolean, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geography
-from api.database import db
+from placetrace.web.database import db
 
 
 # Junction tables for many-to-many relationships

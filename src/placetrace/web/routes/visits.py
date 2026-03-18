@@ -7,8 +7,8 @@ from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func, and_
 from datetime import datetime
 from geoalchemy2 import Geography
-from api.models import Visit, Photo
-from api.database import db
+from placetrace.web.models import Visit, Photo, trip_visits
+from placetrace.web.database import db
 
 bp = Blueprint('visits', __name__)
 
@@ -138,7 +138,6 @@ def get_visits():
         
         # Trip filter
         if trip_id:
-            from api.models import trip_visits
             query = query.join(trip_visits).where(trip_visits.c.trip_id == trip_id)
             filters['trip_id'] = trip_id
         

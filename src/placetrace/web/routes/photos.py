@@ -5,8 +5,8 @@ GET /api/photos - List photos with filtering
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
-from api.models import Photo
-from api.database import db
+from placetrace.web.models import Photo, trip_photos
+from placetrace.web.database import db
 
 bp = Blueprint('photos', __name__)
 
@@ -56,7 +56,6 @@ def get_photos():
         
         # Trip filter
         if trip_id:
-            from api.models import trip_photos
             query = query.join(trip_photos).where(trip_photos.c.trip_id == trip_id)
             filters['trip_id'] = trip_id
         

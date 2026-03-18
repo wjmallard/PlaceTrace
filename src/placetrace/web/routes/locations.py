@@ -5,8 +5,8 @@ GET /api/locations - List locations with filtering
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
-from api.models import Location, Visit, Photo
-from api.database import db
+from placetrace.web.models import Location, Visit, Photo
+from placetrace.web.database import db
 
 bp = Blueprint('locations', __name__)
 

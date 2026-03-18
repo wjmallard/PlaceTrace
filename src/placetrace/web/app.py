@@ -5,17 +5,16 @@ Main application entry point
 
 from flask import Flask
 from flask_cors import CORS
-from api.config import load_config
-from api.database import init_db
-from api.routes import visits, photos, locations, trips, movements, stats, frontend
+from placetrace.config import config
+from placetrace.web.database import init_db
+from placetrace.web.routes import visits, photos, locations, trips, movements, stats, frontend
 
 
 def create_app():
     """Create and configure Flask application"""
     app = Flask(__name__)
-    
+
     # Load configuration
-    config = load_config()
     app.config['CONFIG'] = config
     app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql+psycopg:///{config['databases']['main']}"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

@@ -7,8 +7,8 @@ GET /api/trips/<id> - Get trip details with full visit list
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from datetime import datetime
-from api.models import Trip, Visit, Photo
-from api.database import db
+from placetrace.web.models import Trip, Visit, Photo, trip_visits, trip_photos
+from placetrace.web.database import db
 
 bp = Blueprint('trips', __name__)
 
@@ -133,7 +133,6 @@ def get_trips():
         
         if trip_ids:
             # Count visits per trip
-            from api.models import trip_visits
             visit_count_query = db.select(
                 trip_visits.c.trip_id,
                 func.count(trip_visits.c.visit_id).label('count')
@@ -145,7 +144,6 @@ def get_trips():
             visit_counts = {row[0]: row[1] for row in visit_results}
             
             # Count photos per trip
-            from api.models import trip_photos
             photo_count_query = db.select(
                 trip_photos.c.trip_id,
                 func.count(trip_photos.c.photo_id).label('count')
@@ -216,7 +214,6 @@ def get_trip_detail(trip_id):
             return jsonify({'error': f'Trip {trip_id} not found', 'status': 404}), 404
         
         # Get photo count (photos are fetched separately via /api/photos?trip_id=X)
-        from api.models import trip_photos
         photo_count_query = db.select(
             func.count(trip_photos.c.photo_id)
         ).where(trip_photos.c.trip_id == trip_id)

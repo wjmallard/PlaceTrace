@@ -7,8 +7,8 @@ GET /api/movements/<id> - Get movement detail with route geometry
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from datetime import datetime
-from api.models import Movement, Visit
-from api.database import db
+from placetrace.web.models import Movement, Visit, trip_visits
+from placetrace.web.database import db
 
 bp = Blueprint('movements', __name__)
 
@@ -119,7 +119,6 @@ def get_movements():
         
         # Trip filter (movements connecting visits in this trip)
         if trip_id:
-            from api.models import trip_visits
             
             # Get visit IDs in this trip
             visit_ids_query = db.select(trip_visits.c.visit_id).where(trip_visits.c.trip_id == trip_id)

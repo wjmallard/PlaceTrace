@@ -6,8 +6,8 @@ GET /api/stats/movement - Movement aggregate statistics by activity type
 
 from flask import Blueprint, jsonify, current_app
 from sqlalchemy import func
-from api.models import Movement, Visit, Photo, Trip, Location
-from api.database import db
+from placetrace.web.models import Movement, Visit, Photo, Trip, Location
+from placetrace.web.database import db
 
 bp = Blueprint('stats', __name__)
 
