@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 from datetime import datetime, date
 
-# Import database module
-from db import get_main_connection
+from placetrace.db import get_main_connection
+from placetrace.config import project_root
 
 
 def find_location_candidates(conn, location_type, start_date, end_date, min_hours=100):
@@ -164,7 +164,7 @@ def main():
         sys.exit(1)
     
     # Determine config file
-    config_file = f"data/{location_type}_locations.json"
+    config_file = project_root / "data" / f"{location_type}_locations.json"
     emoji = "🏠" if location_type == "home" else "💼"
     
     # Get date range (from args or interactive)
@@ -287,9 +287,8 @@ def main():
         
         if response in ['y', 'yes']:
             # Load existing locations
-            config_path = Path(config_file)
-            if config_path.exists():
-                with open(config_path, 'r') as f:
+            if config_file.exists():
+                with open(config_file, 'r') as f:
                     locations = json.load(f)
             else:
                 locations = []
@@ -301,7 +300,7 @@ def main():
             locations.sort(key=lambda h: h['start_date'])
             
             # Save
-            with open(config_path, 'w') as f:
+            with open(config_file, 'w') as f:
                 json.dump(locations, f, indent=2)
             
             print(f"\n✓ Added to {config_file}")

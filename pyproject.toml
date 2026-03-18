@@ -27,6 +27,9 @@ pt-link-photos = "placetrace.pipeline.link_photos:main"
 pt-geocode = "placetrace.pipeline.geocode:main"
 pt-detect-trips = "placetrace.pipeline.detect_trips:main"
 pt-generate-thumbnails = "placetrace.pipeline.generate_thumbnails:main"
+pt-places-find = "placetrace.places.find:main"
+pt-places-manage = "placetrace.places.manage:main"
+pt-places-query = "placetrace.places.query:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -19,10 +19,10 @@ Commands:
 """
 
 import sys
+from pathlib import Path
 from datetime import datetime
 
-# Import database module
-from db import get_main_connection
+from placetrace.db import get_main_connection
 
 
 def stats(conn):
@@ -537,5 +537,4 @@ def main():
 
 
 if __name__ == '__main__':
-    from pathlib import Path
     main()

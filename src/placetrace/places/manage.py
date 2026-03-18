@@ -15,13 +15,13 @@ from pathlib import Path
 from datetime import datetime, date
 from collections import defaultdict
 
-# Import database module
-from db import get_main_connection
+from placetrace.db import get_main_connection
+from placetrace.config import project_root
 
 
 def load_locations(location_type):
     """Load locations from JSON file"""
-    config_file = Path(f"data/{location_type}_locations.json")
+    config_file = project_root / "data" / f"{location_type}_locations.json"
     if config_file.exists():
         with open(config_file, 'r') as f:
             data = json.load(f)
@@ -37,7 +37,7 @@ def load_locations(location_type):
 
 def save_locations(location_type, locations):
     """Save locations to JSON file"""
-    config_file = Path(f"data/{location_type}_locations.json")
+    config_file = project_root / "data" / f"{location_type}_locations.json"
     
     # Convert date objects to strings for JSON
     data = []
