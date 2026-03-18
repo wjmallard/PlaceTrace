@@ -54,12 +54,12 @@ def load_locations_json(filename):
 
 def load_trip_config():
     """Load trip configuration from trip_config.json"""
-    filepath = project_root / "config" / "trip_config.json"
-    
+    filepath = project_root / "data" / "trip_config.json"
+
     if not filepath.exists():
         raise FileNotFoundError(
             f"Required file not found: {filepath}\n"
-            f"Please create config/trip_config.json with trip category definitions."
+            f"Please create data/trip_config.json with trip category definitions."
         )
     
     with open(filepath, 'r') as f:
