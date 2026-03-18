@@ -18,6 +18,15 @@ dependencies = [
     "timezonefinder>=6.2",
 ]
 
+[project.scripts]
+pt-import-visits = "placetrace.pipeline.import_visits:main"
+pt-import-movements = "placetrace.pipeline.import_movements:main"
+pt-import-photos = "placetrace.pipeline.import_photos:main"
+pt-link-photos = "placetrace.pipeline.link_photos:main"
+pt-geocode = "placetrace.pipeline.geocode:main"
+pt-detect-trips = "placetrace.pipeline.detect_trips:main"
+pt-generate-thumbnails = "placetrace.pipeline.generate_thumbnails:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

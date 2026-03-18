@@ -24,21 +24,8 @@ from datetime import datetime, timezone, timedelta
 from tqdm import tqdm
 import sys
 
-# Import database module
-from db import get_main_connection
-
-
-def load_config():
-    """Load configuration from config.yaml"""
-    import yaml
-    project_root = Path(__file__).parent.parent
-    config_path = project_root / "config.yaml"
-    
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-    
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+from placetrace.db import get_main_connection
+from placetrace.config import config
 
 
 def parse_timestamp(timestamp_str):
@@ -747,16 +734,10 @@ def main():
     print("MOVEMENT IMPORT (Google Timeline)")
     print("="*60)
     
-    try:
-        config = load_config()
-        json_file = Path(config['source_data']['location_history_json'])
-        
-        if not json_file.exists():
-            print(f"\n✗ Location history file not found: {json_file}")
-            sys.exit(1)
-        
-    except Exception as e:
-        print(f"\n✗ Error loading configuration: {e}")
+    json_file = Path(config['source_data']['location_history_json'])
+
+    if not json_file.exists():
+        print(f"\n✗ Location history file not found: {json_file}")
         sys.exit(1)
     
     # Connect to database

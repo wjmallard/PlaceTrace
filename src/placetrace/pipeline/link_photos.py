@@ -18,8 +18,8 @@ Usage:
 from tqdm import tqdm
 import sys
 
-# Import database module
-from db import get_main_connection, config
+from placetrace.db import get_main_connection
+from placetrace.config import config
 
 
 def match_photos_to_existing_visits(conn):

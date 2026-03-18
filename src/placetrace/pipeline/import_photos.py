@@ -33,8 +33,8 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 from timezonefinder import TimezoneFinder
 
-# Import database module
-from db import get_main_connection, config
+from placetrace.db import get_main_connection
+from placetrace.config import config
 
 # Enable HEIF/AVIF support
 try:

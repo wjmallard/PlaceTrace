@@ -9,8 +9,8 @@ from pathlib import Path
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 
-# Import database module
-from db import get_main_connection, config
+from placetrace.db import get_main_connection
+from placetrace.config import config
 
 # Allow loading of truncated images (corrupted files)
 ImageFile.LOAD_TRUNCATED_IMAGES = True

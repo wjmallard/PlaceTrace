@@ -24,8 +24,8 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import sys
 
-# Import database module
-from db import get_main_connection
+from placetrace.db import get_main_connection
+from placetrace.config import project_root
 
 
 def load_locations_json(filename):
@@ -33,8 +33,6 @@ def load_locations_json(filename):
     Load home or work locations from JSON file.
     Returns list of location dicts with parsed dates.
     """
-    # Find project root: pipeline/7_detect_trips.py -> ../data/
-    project_root = Path(__file__).parent.parent
     filepath = project_root / "data" / filename
     
     if not filepath.exists():
@@ -56,8 +54,6 @@ def load_locations_json(filename):
 
 def load_trip_config():
     """Load trip configuration from trip_config.json"""
-    # Find project root: pipeline/7_detect_trips.py -> ../config/
-    project_root = Path(__file__).parent.parent
     filepath = project_root / "config" / "trip_config.json"
     
     if not filepath.exists():

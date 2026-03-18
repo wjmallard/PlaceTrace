@@ -15,8 +15,8 @@ from tqdm import tqdm
 import sys
 from collections import defaultdict
 
-# Import database module
-from db import get_main_connection, geocode_point, get_or_create_location, config
+from placetrace.db import get_main_connection, geocode_point, get_or_create_location
+from placetrace.config import config
 
 # For multiprocessing
 from multiprocessing import Pool

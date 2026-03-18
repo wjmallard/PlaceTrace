@@ -22,8 +22,8 @@ from tqdm import tqdm
 import sys
 import re
 
-# Import database module
-from db import get_main_connection, config
+from placetrace.db import get_main_connection
+from placetrace.config import config
 
 
 def parse_geo_string(geo_str):
