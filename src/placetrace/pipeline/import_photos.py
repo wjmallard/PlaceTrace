@@ -570,7 +570,7 @@ def import_photos(conn, photo_directories):
         ) as pool:
             # imap_unordered returns results as they complete
             for metadata in tqdm(
-                pool.imap_unordered(process_single_photo, photo_files, chunksize=10),
+                pool.imap_unordered(process_single_photo, photo_files, chunksize=100),
                 total=len(photo_files),
                 desc="Progress"
             ):
