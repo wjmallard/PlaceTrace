@@ -343,18 +343,30 @@ def get_existing_photos(conn):
     return existing_hashes, existing_quick
 
 
-def process_single_photo(args):
+# Worker globals — loaded once per process via Pool initializer
+_worker_hashes = None
+_worker_quick = None
+
+
+def _init_worker(hashes, quick):
+    """Initialize shared lookup sets in each worker process."""
+    global _worker_hashes, _worker_quick
+    _worker_hashes = hashes
+    _worker_quick = quick
+
+
+def process_single_photo(photo_path):
     """
     Process a single photo in a worker process.
     Steps: quick check → hash → full check → extract (if new)
-    
-    Always returns metadata dict (even with NULL fields) unless already exists.
-    This ensures ALL files get catalogued, not just those with EXIF.
-    
+
+    Uses module-level _worker_hashes and _worker_quick loaded via Pool initializer.
+
     Returns:
         dict with metadata, or None if already exists in database
     """
-    photo_path, existing_hashes, existing_quick = args
+    existing_hashes = _worker_hashes
+    existing_quick = _worker_quick
     
     try:
         # Step 1: Fast check using file metadata (stat is instant)
@@ -543,21 +555,22 @@ def import_photos(conn, photo_directories):
     # Setup multiprocessing
     num_workers = config['processing'].get('num_workers', 4)
     print(f"Using {num_workers} workers for parallel processing")
-    
-    # Prepare worker arguments
-    worker_args = [(photo_path, existing_hashes, existing_quick) for photo_path in photo_files]
-    
+
     # Process and insert (streaming)
     print("\nProcessing and inserting photos (streaming)...")
     cursor = conn.cursor()
     inserted = 0
     skipped = 0
-    
+
     try:
-        with Pool(num_workers) as pool:
+        with Pool(
+            num_workers,
+            initializer=_init_worker,
+            initargs=(existing_hashes, existing_quick),
+        ) as pool:
             # imap_unordered returns results as they complete
             for metadata in tqdm(
-                pool.imap_unordered(process_single_photo, worker_args, chunksize=10),
+                pool.imap_unordered(process_single_photo, photo_files, chunksize=10),
                 total=len(photo_files),
                 desc="Progress"
             ):
