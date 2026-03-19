@@ -21,6 +21,27 @@ Personal location history explorer built on PostGIS. Imports Google Timeline dat
 
 PlaceTrace works with Google Timeline data exported via [Google Takeout](https://takeout.google.com/). Select **Location History** and export in JSON format. The export produces a `location-history.json` file containing your visits and movements.
 
+## OSM Boundaries Database
+
+The geocoder requires a local OSM boundaries database. Prerequisites: [osmium-tool](https://osmcode.org/osmium-tool/) and [osm2pgsql](https://osm2pgsql.org/) (v2.2+).
+
+Download the planet file (~85 GB) and filter to admin boundaries (~1.3 GB):
+
+```bash
+curl -LO https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
+osmium tags-filter planet-latest.osm.pbf boundary=administrative -o boundaries.osm.pbf
+```
+
+Create the database and import:
+
+```bash
+createdb osm_boundaries
+psql osm_boundaries -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+osm2pgsql -d osm_boundaries -O flex -S sql/boundaries.lua boundaries.osm.pbf
+```
+
+This imports ~306k admin boundaries (countries, states, counties, cities) and takes about 6 minutes.
+
 ## Installation
 
 Copy the default config file:
