@@ -20,10 +20,10 @@ local admin_boundaries = osm2pgsql.define_table({
         { column = 'geom',         type = 'geometry', projection = 4326 },
     },
     indexes = {
-        { column = 'osm_id' },
-        { column = 'admin_level' },
-        { column = 'country_code', where = 'country_code IS NOT NULL' },
-        { column = 'name', where = 'name IS NOT NULL' },
+        { column = 'osm_id', method = 'btree' },
+        { column = 'admin_level', method = 'btree' },
+        { column = 'country_code', method = 'btree', where = 'country_code IS NOT NULL' },
+        { column = 'name', method = 'btree', where = 'name IS NOT NULL' },
         { column = 'geom', method = 'gist' },
     },
 })
@@ -48,6 +48,6 @@ function osm2pgsql.process_relation(object)
         wikidata     = tags.wikidata,
         wikipedia    = tags.wikipedia,
         tags         = tags,
-        geom         = object:as_multigeometry(),
+        geom         = object:as_multipolygon(),
     })
 end

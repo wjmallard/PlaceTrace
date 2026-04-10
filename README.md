@@ -40,7 +40,7 @@ psql osm_boundaries -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 osm2pgsql -d osm_boundaries -O flex -S sql/boundaries.lua boundaries.osm.pbf
 ```
 
-This imports ~306k admin boundaries (countries, states, counties, cities) and takes about 6 minutes.
+This imports ~300k admin boundaries (countries, states, counties, cities) and takes about 5 minutes.
 
 ## Installation
 
