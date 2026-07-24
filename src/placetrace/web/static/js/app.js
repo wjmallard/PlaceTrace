@@ -468,9 +468,7 @@ function placeTraceApp() {
         selectTrip(trip) {
             // Update movement date to trip start date (already in YYYY-MM-DD format)
             this.selectedDay = trip.local_start_date;
-            
-            // Add trip filter chip
-            
+
             // Load visits for this trip
             this.loadTripVisits(trip.id);
         },
@@ -512,9 +510,7 @@ function placeTraceApp() {
                 fillOpacity: 0.1,
                 weight: 2
             }).addTo(this.map);
-            
-            // Add filter chip
-            
+
             // Note: Caller is responsible for calling loadRecentVisits()
         },
         
@@ -556,9 +552,7 @@ function placeTraceApp() {
                         weight: 2
                     }
                 ).addTo(this.map);
-                
-                // Update filter chip label
-                
+
                 // Note: Caller responsible for reloading visits
             }
         },
@@ -655,12 +649,7 @@ function placeTraceApp() {
             
             this.filterManager.temporal.start = this.startDate;
             this.filterManager.temporal.end = this.endDate;
-            
-            // Build filter chip label
-            const label = this.formatDateRangeChip();
-            
-            // Add filter chip
-            
+
             // Reload trips and visits with date filter
             this.loadTrips();
             this.loadRecentVisits();
@@ -709,30 +698,6 @@ function placeTraceApp() {
             this.applyDateFilter();
         },
 
-        // Format date range for chip display
-        formatDateRangeChip() {
-            if (!this.filterManager.temporal.start) return '';
-            
-            const start = new Date(this.filterManager.temporal.start).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-            
-            const end = new Date(this.filterManager.temporal.end).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
-            
-            // If same date, show once
-            if (this.filterManager.temporal.start === this.filterManager.temporal.end) {
-                return `📅 ${start}`;
-            }
-            
-            return `📅 ${start} → ${end}`;
-        },
-        
         // Clear date range filter
         clearDateFilter() {
             this.filterManager.clearTemporal();
@@ -1159,13 +1124,9 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Remove spatial chip from UI
-            
             // Set date range to just this day
             this.filterManager.temporal.start = dateStr;
             this.filterManager.temporal.end = dateStr;
-            
-            // Add filter chip
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1190,8 +1151,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Remove spatial chip from UI
-            
             // Calculate 3 days: ±1 day
             const date = new Date(dateStr);
             const startDate = new Date(date);
@@ -1205,8 +1164,6 @@ function placeTraceApp() {
             // Set date range
             this.filterManager.temporal.start = startStr;
             this.filterManager.temporal.end = endStr;
-            
-            // Add filter chip
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1231,8 +1188,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Remove spatial chip from UI
-            
             // Calculate week: ±3 days
             const date = new Date(dateStr);
             const startDate = new Date(date);
@@ -1246,8 +1201,6 @@ function placeTraceApp() {
             // Set date range
             this.filterManager.temporal.start = startStr;
             this.filterManager.temporal.end = endStr;
-            
-            // Add filter chip
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1272,8 +1225,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Remove spatial chip from UI
-            
             // Calculate month: ±15 days
             const date = new Date(dateStr);
             const startDate = new Date(date);
@@ -1287,8 +1238,6 @@ function placeTraceApp() {
             // Set date range
             this.filterManager.temporal.start = startStr;
             this.filterManager.temporal.end = endStr;
-            
-            // Add filter chip
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1313,8 +1262,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Remove spatial chip from UI
-            
             // Get full year
             const date = new Date(dateStr);
             const year = date.getFullYear();
@@ -1324,8 +1271,6 @@ function placeTraceApp() {
             // Set date range
             this.filterManager.temporal.start = startStr;
             this.filterManager.temporal.end = endStr;
-            
-            // Add filter chip
             
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
@@ -1341,8 +1286,7 @@ function placeTraceApp() {
             
             // Clear date filter state (time and space are mutually exclusive)
             this.filterManager.clearTemporal();
-            // Remove date chip from UI
-            
+
             // Set radius first, then call setSpatialFilter
             this.filterManager.spatial.radius_km = radius_km;
             this.setSpatialFilter(lat, lon);
@@ -1570,8 +1514,6 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            
-            // Clear all filter chips
         }
     };
 }
