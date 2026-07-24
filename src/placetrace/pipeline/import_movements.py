@@ -29,6 +29,10 @@ from placetrace.pipeline.parse import (
     parse_timestamp,
 )
 
+# Google revises recent segments between exports, so incremental imports
+# re-import everything within this window before the newest stored movement
+REVISION_WINDOW = timedelta(days=7)
+
 
 def extract_start_end_local_times(start_time_str, end_time_str):
     """
@@ -342,24 +346,45 @@ def import_movements_to_database(conn, movements, force=False):
     """
     Import movements into Movements table.
     Links to adjacent visits using temporal and spatial proximity.
+
+    Incremental by default: only movements ending after the stored high-water
+    mark (minus REVISION_WINDOW) are imported, replacing that window's stored
+    rows. --force wipes and re-imports everything.
     """
     cursor = conn.cursor()
 
-    # Check if table is empty
-    cursor.execute("SELECT COUNT(*) as count FROM Movements")
+    cursor.execute("SELECT count(*) FROM Movements WHERE source = 'google_timeline'")
     existing_count = cursor.fetchone()['count']
 
-    if existing_count > 0:
-        if force:
-            print(f"\n⚠ Deleting {existing_count:,} existing movements (--force)")
-            cursor.execute("DELETE FROM Movements")
-            conn.commit()
-        else:
-            print(f"\n✓ Movements table already has {existing_count:,} records, skipping")
-            print("  To re-import, run: pt-import-movements --force")
+    if force and existing_count > 0:
+        print(f"\n⚠ Deleting {existing_count:,} existing movements (--force)")
+        cursor.execute("DELETE FROM Movements WHERE source = 'google_timeline'")
+        conn.commit()
+    elif existing_count > 0:
+        cursor.execute("SELECT max(end_time) AS high_water FROM Movements WHERE source = 'google_timeline'")
+        cutoff = cursor.fetchone()['high_water'] - REVISION_WINDOW
+
+        parsed_count = len(movements)
+        movements = [m for m in movements if m['end_time'] > cutoff]
+
+        cursor.execute("""
+            DELETE FROM Movements
+            WHERE source = 'google_timeline'
+              AND end_time > %(cutoff)s
+        """, {
+            'cutoff': cutoff,
+        })
+        replaced = cursor.rowcount
+        conn.commit()
+
+        print(f"\nIncremental import of movements after {cutoff:%Y-%m-%d}")
+        print(f"  {len(movements):,} of {parsed_count:,} parsed movements are new (replacing {replaced:,} stored in the revision window)")
+
+        if not movements:
+            print("✓ Nothing new to import")
             cursor.close()
             return 0
-    
+
     print("\nImporting movements...")
     
     imported_count = 0
