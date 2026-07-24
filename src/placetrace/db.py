@@ -8,7 +8,7 @@ Provides geocoding and location management functions
 import psycopg
 from psycopg.rows import dict_row
 
-from placetrace.config import config
+from placetrace.config import MAIN_DB, OSM_DB
 
 # OSM admin_level -> location field, most specific first
 ADMIN_LEVELS = {
@@ -25,8 +25,8 @@ ADMIN_LEVELS = {
 def get_main_connection():
     """Create connection to main database - uses .pgpass"""
     conn = psycopg.connect(
-        dbname=config['databases']['main'],
-        row_factory=dict_row
+        dbname=MAIN_DB,
+        row_factory=dict_row,
     )
     # Set session timezone to UTC to prevent timezone confusion
     conn.execute("SET timezone = 'UTC'")
@@ -35,8 +35,8 @@ def get_main_connection():
 def get_osm_connection():
     """Create connection to OSM boundaries database - uses .pgpass"""
     return psycopg.connect(
-        dbname=config['databases']['osm'],
-        row_factory=dict_row
+        dbname=OSM_DB,
+        row_factory=dict_row,
     )
 
 # ============================================================================

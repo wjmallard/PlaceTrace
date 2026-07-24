@@ -14,9 +14,8 @@ def _find_project_root():
     raise FileNotFoundError("Could not find pyproject.toml in any parent directory")
 
 
-def _load_config():
+def _load_config(root):
     """Load config.yaml from the project root."""
-    root = _find_project_root()
     config_path = root / "config.yaml"
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -25,4 +24,14 @@ def _load_config():
 
 
 project_root = _find_project_root()
-config = _load_config()
+_config = _load_config(project_root)
+
+MAIN_DB = _config["databases"]["main"]
+OSM_DB = _config["databases"]["osm"]
+
+LOCATION_HISTORY_JSON = Path(_config["source_data"]["location_history_json"]).expanduser()
+
+TRIPS = _config["trips"]
+TRIP_CATEGORIES = _config["trips"]["categories"]
+
+NUM_WORKERS = _config["processing"].get("num_workers", 4)

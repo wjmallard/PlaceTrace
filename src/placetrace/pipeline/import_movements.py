@@ -16,13 +16,12 @@ import argparse
 import traceback
 
 import orjson
-from pathlib import Path
 from datetime import timedelta
 from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
-from placetrace.config import config
+from placetrace.config import LOCATION_HISTORY_JSON
 from placetrace.pipeline.parse import (
     local_date_time,
     parse_geo_point,
@@ -590,10 +589,8 @@ def main(argv=None):
     print("MOVEMENT IMPORT (Google Timeline)")
     print("="*60)
     
-    json_file = Path(config['source_data']['location_history_json'])
-
-    if not json_file.exists():
-        print(f"\n✗ Location history file not found: {json_file}")
+    if not LOCATION_HISTORY_JSON.exists():
+        print(f"\n✗ Location history file not found: {LOCATION_HISTORY_JSON}")
         sys.exit(1)
     
     # Connect to database
@@ -601,7 +598,7 @@ def main(argv=None):
     
     try:
         # Parse movements from JSON (convert generator to list for progress bar)
-        movements = list(parse_movements_from_json(json_file))
+        movements = list(parse_movements_from_json(LOCATION_HISTORY_JSON))
         
         if not movements:
             print("\n✓ No movements found to import")

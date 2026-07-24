@@ -8,7 +8,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from placetrace.config import config
+from placetrace.config import TRIP_CATEGORIES
 from placetrace.web.database import get_db
 from placetrace.web.serialize import (
     VISIT_COLUMNS,
@@ -94,7 +94,7 @@ def get_trips():
     if limit < 1 or limit > 1000:
         return jsonify({'error': 'limit must be between 1 and 1000', 'status': 400}), 400
 
-    valid_categories = [c['name'] for c in config['trips']['categories']]
+    valid_categories = [c['name'] for c in TRIP_CATEGORIES]
     if category and category not in valid_categories:
         return jsonify({'error': f'category must be one of: {", ".join(valid_categories)}', 'status': 400}), 400
 

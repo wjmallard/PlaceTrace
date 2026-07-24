@@ -19,7 +19,7 @@ from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
-from placetrace.config import config
+from placetrace.config import LOCATION_HISTORY_JSON
 from placetrace.pipeline.parse import local_date_time, parse_geo_point, parse_timestamp
 
 
@@ -227,16 +227,13 @@ def main(argv=None):
     print("="*60)
     print("IMPORT VISITS")
     print("="*60)
-    
-    # Get JSON path from config
-    json_path = config['source_data']['location_history_json']
-    
+
     # Connect to database
     conn = get_main_connection()
     
     try:
         # Import visits
-        imported = import_visits(conn, json_path)
+        imported = import_visits(conn, LOCATION_HISTORY_JSON)
         
         # Print summary
         print_summary(conn)

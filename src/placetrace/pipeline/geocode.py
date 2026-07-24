@@ -12,7 +12,7 @@ from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection, geocode_point, get_or_create_location
-from placetrace.config import config
+from placetrace.config import NUM_WORKERS
 
 # For multiprocessing
 from multiprocessing import Pool
@@ -85,8 +85,7 @@ def geocode_and_update(conn, coord_to_visit_ids):
     """
     print("\nGeocoding coordinates in parallel (sequential database updates)...")
 
-    num_workers = config['processing'].get('num_workers', 4)
-    print(f"Using {num_workers} workers for parallel geocoding")
+    print(f"Using {NUM_WORKERS} workers for parallel geocoding")
 
     coord_list = list(coord_to_visit_ids.keys())
     cursor = conn.cursor()
@@ -94,7 +93,7 @@ def geocode_and_update(conn, coord_to_visit_ids):
     failed_coords = 0
 
     try:
-        with Pool(num_workers) as pool:
+        with Pool(NUM_WORKERS) as pool:
             # imap_unordered yields results as workers complete (any order)
             # Main thread processes results sequentially
             for lat, lon, location_info in tqdm(

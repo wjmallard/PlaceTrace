@@ -16,13 +16,12 @@ import argparse
 import json
 import traceback
 from collections import Counter
-from pathlib import Path
 from datetime import datetime, timedelta
 from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
-from placetrace.config import config, project_root
+from placetrace.config import TRIPS, project_root
 from placetrace.geo import haversine_km
 
 HOME_RADIUS_KM = 20  # Within this distance of home counts as "at home"
@@ -51,11 +50,6 @@ def load_locations_json(filename):
         loc['end_date'] = datetime.strptime(loc['end_date'], '%Y-%m-%d').date()
     
     return locations
-
-
-def load_trip_config():
-    """Load trip configuration from config.yaml trips section."""
-    return config['trips']
 
 
 def get_place_at_date(places, date):
@@ -763,7 +757,7 @@ def main(argv=None):
         print("\nLoading configuration files...")
         home_locations = load_locations_json('home_locations.json')
         work_locations = load_locations_json('work_locations.json')
-        trip_config = load_trip_config()
+        trip_config = TRIPS
         
         print(f"✓ Loaded {len(home_locations)} home locations")
         print(f"✓ Loaded {len(work_locations)} work locations")
