@@ -1,10 +1,7 @@
-#!/usr/bin/env python3
 """
-7_detect_trips.py
+pt-detect-trips — Detect and categorize trips from location history.
 
-Detect and categorize trips from location history:
 - Loads home/work locations from JSON files (date-aware)
-- Uses PostGIS for all distance calculations
 - Checks for connecting Movements when evaluating visit gaps
 - Categorizes trips: Day Trip, Short Trip, Long Trip
 - Populates Trips and Trip_Visits tables
@@ -13,11 +10,9 @@ Requirements:
 - data/home_locations.json - Date-aware home locations
 - data/work_locations.json - Date-aware work locations
 - trips section in config.yaml - Trip category definitions
-
-Usage:
-    python 7_detect_trips.py
 """
 
+import argparse
 import json
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -732,8 +727,16 @@ def print_trip_summary(conn, trip_config):
     print("="*60 + "\n")
 
 
-def main():
+def main(argv=None):
     """Main execution flow"""
+    parser = argparse.ArgumentParser(description="Detect and categorize trips from visit history.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="delete existing trips before detection",
+    )
+    args = parser.parse_args(argv)
+
     print("="*60)
     print("TRIP DETECTION (Activity-Aware)")
     print("="*60)
@@ -755,11 +758,10 @@ def main():
     
     # Connect to database
     conn = get_main_connection()
-    force = '--force' in sys.argv
 
     try:
         # Wipe existing trips if --force
-        if force:
+        if args.force:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM trip_visits")
             cursor.execute("DELETE FROM trips")

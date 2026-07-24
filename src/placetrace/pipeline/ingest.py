@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 pt-ingest — Run the full PlaceTrace pipeline in order.
 
@@ -8,6 +7,8 @@ Usage:
     pt-ingest --list           # show available steps
 """
 
+import argparse
+import importlib
 import sys
 
 STEPS = [
@@ -21,32 +22,32 @@ STEP_NAMES = [name for name, _ in STEPS]
 
 
 def main():
-    args = sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="Run the full PlaceTrace pipeline in order.",
+    )
+    parser.add_argument(
+        "--from",
+        dest="start_from",
+        choices=STEP_NAMES,
+        help="resume from this step",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="show available steps and exit",
+    )
+    args = parser.parse_args()
 
-    if "--list" in args:
+    if args.list:
         print("Pipeline steps (in order):\n")
         for i, (name, _) in enumerate(STEPS, 1):
             print(f"  {i}. {name}")
         return
 
-    start_from = None
-    if "--from" in args:
-        idx = args.index("--from")
-        if idx + 1 >= len(args):
-            print("Error: --from requires a step name")
-            print(f"Available steps: {', '.join(STEP_NAMES)}")
-            sys.exit(1)
-        start_from = args[idx + 1]
-        if start_from not in STEP_NAMES:
-            print(f"Error: unknown step '{start_from}'")
-            print(f"Available steps: {', '.join(STEP_NAMES)}")
-            sys.exit(1)
-
     # Determine which steps to run
-    if start_from:
-        start_idx = STEP_NAMES.index(start_from)
-        steps_to_run = STEPS[start_idx:]
-        print(f"Resuming pipeline from '{start_from}' ({len(steps_to_run)} steps)\n")
+    if args.start_from:
+        steps_to_run = STEPS[STEP_NAMES.index(args.start_from):]
+        print(f"Resuming pipeline from '{args.start_from}' ({len(steps_to_run)} steps)\n")
     else:
         steps_to_run = STEPS
         print(f"Running full pipeline ({len(steps_to_run)} steps)\n")
@@ -57,8 +58,8 @@ def main():
         print(f"{'='*60}\n")
 
         try:
-            module = __import__(module_path, fromlist=["main"])
-            module.main()
+            module = importlib.import_module(module_path)
+            module.main(argv=[])
         except KeyboardInterrupt:
             print(f"\n\nInterrupted during '{name}'. Resume with:")
             print(f"  pt-ingest --from {name}")

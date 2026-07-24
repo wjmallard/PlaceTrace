@@ -1,15 +1,12 @@
-#!/usr/bin/env python3
 """
-6_geocode.py
+pt-geocode — Batch geocode all Visits with NULL location_id.
 
-Batch geocode all Visits with NULL location_id.
 - Finds unique coordinates from Visits
 - Geocodes each unique coordinate ONCE
 - Batch updates all matching records
-
-Usage:
-    python 6_geocode.py
 """
+
+import argparse
 
 from tqdm import tqdm
 import sys
@@ -202,8 +199,11 @@ def print_summary(conn):
     print("="*60 + "\n")
 
 
-def main():
+def main(argv=None):
     """Main execution flow"""
+    parser = argparse.ArgumentParser(description="Batch reverse-geocode visits against the OSM database.")
+    parser.parse_args(argv)
+
     print("="*60)
     print("BATCH GEOCODING")
     print("="*60)

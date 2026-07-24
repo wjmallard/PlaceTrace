@@ -1,20 +1,17 @@
-#!/usr/bin/env python3
 """
-2_import_visits.py
+pt-import-visits — Import Google Timeline location history visits.
 
-Import Google Timeline location history visits.
 - Streaming insertions: insert as parsing progresses (Ctrl-C safe)
 - Parses location-history.json
 - Extracts visit entries only (skips activities/paths)
 - Stores lat/lon in geography column
 - Extracts local_date and local_time from timezone-aware timestamps
-- Sets location_id = NULL (will be geocoded by 4_geocode.py)
+- Sets location_id = NULL (geocoded later by pt-geocode)
 - Sets visit_type = 'timeline'
 - Resume capability via duplicate detection
-
-Usage:
-    python 2_import_visits.py
 """
+
+import argparse
 
 import orjson
 from tqdm import tqdm
@@ -220,8 +217,11 @@ def print_summary(conn):
     print("="*60 + "\n")
 
 
-def main():
+def main(argv=None):
     """Main execution flow"""
+    parser = argparse.ArgumentParser(description="Import visits from Google Timeline JSON.")
+    parser.parse_args(argv)
+
     print("="*60)
     print("IMPORT VISITS")
     print("="*60)

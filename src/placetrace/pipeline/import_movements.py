@@ -1,22 +1,18 @@
-#!/usr/bin/env python3
 """
-3_import_movements.py
-
-Parse and import movement data from Google Timeline JSON into Movements table.
+pt-import-movements — Import movement data from Google Timeline JSON.
 
 Handles multiple Google Timeline formats:
 1. Old format (2014-2018): 'activity' objects
-2. New format (2019+): 'activitySegment' objects  
+2. New format (2019+): 'activitySegment' objects
 3. Standalone 'timelinePath' breadcrumb trails
 
 All movements stored in Movements table with:
 - source='google_timeline'
 - movement_type='activity' or 'breadcrumb_trail'
 - source_metadata JSONB for format-specific fields
-
-Usage:
-    python 3_import_movements.py
 """
+
+import argparse
 
 import orjson
 from pathlib import Path
@@ -566,8 +562,16 @@ def print_movement_summary(conn):
     print("="*60 + "\n")
 
 
-def main():
+def main(argv=None):
     """Main execution flow"""
+    parser = argparse.ArgumentParser(description="Import movements from Google Timeline JSON.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="delete existing movements and re-import",
+    )
+    args = parser.parse_args(argv)
+
     print("="*60)
     print("MOVEMENT IMPORT (Google Timeline)")
     print("="*60)
@@ -592,8 +596,7 @@ def main():
         print(f"✓ Total movements to import: {len(movements):,}")
         
         # Import to database
-        force = '--force' in sys.argv
-        imported = import_movements_to_database(conn, movements, force=force)
+        imported = import_movements_to_database(conn, movements, force=args.force)
 
         if imported > 0:
             # Print summary
