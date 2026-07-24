@@ -16,6 +16,7 @@ from collections import defaultdict
 
 from placetrace.db import get_main_connection
 from placetrace.config import project_root
+from placetrace.geo import haversine_km
 
 
 def load_locations(location_type):
@@ -347,17 +348,7 @@ def review_and_save_detected(conn, location_type, detected_locations):
             # Check if dates overlap
             if not (detected_end < existing_start or detected_start > existing_end):
                 # Check if same location (within 1km)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT ST_Distance(
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-                    ) / 1000 as distance_km
-                """, (loc['lon'], loc['lat'], existing['lon'], existing['lat']))
-                result = cursor.fetchone()
-                cursor.close()
-                
-                if result['distance_km'] < 1:  # Same location
+                if haversine_km(loc['lat'], loc['lon'], existing['lat'], existing['lon']) < 1:
                     matching_config = existing
                     break
         
@@ -377,8 +368,8 @@ def review_and_save_detected(conn, location_type, detected_locations):
     print("="*80)
     
     # Count how many are new vs already configured
-    configured_count = sum(1 for loc in detected_locations 
-                          if any(is_same_location_period(conn, loc, existing) 
+    configured_count = sum(1 for loc in detected_locations
+                          if any(is_same_location_period(loc, existing)
                                 for existing in existing_locations))
     new_count = len(detected_locations) - configured_count
     
@@ -412,7 +403,7 @@ def review_and_save_detected(conn, location_type, detected_locations):
         print("\nNot saved. Use find_location.py to add individual entries manually.")
 
 
-def is_same_location_period(conn, detected, existing):
+def is_same_location_period(detected, existing):
     """
     Check if detected location overlaps with existing configured location.
     Returns True if same location and overlapping time period.
@@ -422,23 +413,13 @@ def is_same_location_period(conn, detected, existing):
     existing_end = existing['end_date'] if existing['end_date'] else date.max
     detected_start = detected['start_date']
     detected_end = detected['end_date']
-    
+
     # No date overlap
     if detected_end < existing_start or detected_start > existing_end:
         return False
-    
+
     # Check if same location (within 1km)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT ST_Distance(
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-        ) / 1000 as distance_km
-    """, (detected['lon'], detected['lat'], existing['lon'], existing['lat']))
-    result = cursor.fetchone()
-    cursor.close()
-    
-    return result['distance_km'] < 1  # Same location if within 1km
+    return haversine_km(detected['lat'], detected['lon'], existing['lat'], existing['lon']) < 1
 
 
 def list_locations(location_type):
