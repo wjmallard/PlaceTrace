@@ -185,14 +185,18 @@ def finalize_period(conn, place_id, monthly_data):
     
     # Query for actual visit dates at this location
     cursor.execute("""
-        SELECT 
-            MIN(start_time)::date as first_visit,
-            MAX(end_time)::date as last_visit
+        SELECT
+            min(start_time)::date as first_visit,
+            max(end_time)::date as last_visit
         FROM Visits
-        WHERE place_id = %s
-          AND start_time::date >= %s
-          AND start_time::date <= %s + INTERVAL '1 month'
-    """, (place_id, first_month, last_month))
+        WHERE place_id = %(place_id)s
+          AND start_time::date >= %(first_month)s
+          AND start_time::date <= %(last_month)s + INTERVAL '1 month'
+    """, {
+        'place_id': place_id,
+        'first_month': first_month,
+        'last_month': last_month,
+    })
     
     result = cursor.fetchone()
     cursor.close()

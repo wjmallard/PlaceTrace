@@ -80,10 +80,13 @@ def geocode_point(lat, lon):
                 ST_X(ST_Centroid(geom)) as centroid_lon,
                 ST_Y(ST_Centroid(geom)) as centroid_lat
             FROM admin_boundaries
-            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326))
               AND admin_level IN (2, 4, 6, 8)
             ORDER BY admin_level DESC
-        """, (lon, lat))
+        """, {
+            'lat': lat,
+            'lon': lon,
+        })
 
         results = cursor.fetchall()
 
@@ -123,10 +126,15 @@ def get_location_name(conn, location_id, lat, lon):
 
     with conn.cursor() as cursor:
         cursor.execute("""
-            SELECT city, state, country
+            SELECT
+                city,
+                state,
+                country
             FROM Locations
-            WHERE id = %s
-        """, (location_id,))
+            WHERE id = %(location_id)s
+        """, {
+            'location_id': location_id,
+        })
         result = cursor.fetchone()
 
     if not result:
@@ -172,44 +180,64 @@ def get_or_create_location(conn, location_info):
         # Check if location exists
         # Use IS NOT DISTINCT FROM for NULL-safe comparison
         cursor.execute("""
-            SELECT id FROM Locations
-            WHERE (city IS NOT DISTINCT FROM %s)
-              AND (county IS NOT DISTINCT FROM %s)
-              AND (state IS NOT DISTINCT FROM %s)
-              AND country = %s
-        """, (location_info['city'], 
-              location_info['county'],
-              location_info['state'], 
-              location_info['country']))
-        
+            SELECT id
+            FROM Locations
+            WHERE city IS NOT DISTINCT FROM %(city)s
+              AND county IS NOT DISTINCT FROM %(county)s
+              AND state IS NOT DISTINCT FROM %(state)s
+              AND country = %(country)s
+        """, {
+            'city': location_info['city'],
+            'county': location_info['county'],
+            'state': location_info['state'],
+            'country': location_info['country'],
+        })
+
         existing = cursor.fetchone()
         if existing:
             return existing['id']
-        
+
         # Insert new location with full hierarchy
         cursor.execute("""
             INSERT INTO Locations (
-                city, county, state, country,
-                city_osm_id, county_osm_id, state_osm_id, country_osm_id,
-                admin_level, centroid
+                city,
+                county,
+                state,
+                country,
+                city_osm_id,
+                county_osm_id,
+                state_osm_id,
+                country_osm_id,
+                admin_level,
+                centroid
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)
+            VALUES (
+                %(city)s,
+                %(county)s,
+                %(state)s,
+                %(country)s,
+                %(city_osm_id)s,
+                %(county_osm_id)s,
+                %(state_osm_id)s,
+                %(country_osm_id)s,
+                %(admin_level)s,
+                ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography
+            )
             RETURNING id
-        """, (
-            location_info['city'],
-            location_info['county'],
-            location_info['state'],
-            location_info['country'],
-            location_info['city_osm_id'],
-            location_info['county_osm_id'],
-            location_info['state_osm_id'],
-            location_info['country_osm_id'],
-            admin_level,
-            primary_centroid[0],  # lon
-            primary_centroid[1]   # lat
-        ))
-        
+        """, {
+            'city': location_info['city'],
+            'county': location_info['county'],
+            'state': location_info['state'],
+            'country': location_info['country'],
+            'city_osm_id': location_info['city_osm_id'],
+            'county_osm_id': location_info['county_osm_id'],
+            'state_osm_id': location_info['state_osm_id'],
+            'country_osm_id': location_info['country_osm_id'],
+            'admin_level': admin_level,
+            'lon': primary_centroid[0],
+            'lat': primary_centroid[1],
+        })
+
         new_location = cursor.fetchone()
         conn.commit()
         return new_location['id']

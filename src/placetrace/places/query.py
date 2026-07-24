@@ -15,10 +15,12 @@ def stats(conn):
     
     # Visit counts
     cursor.execute("""
-        SELECT visit_type, COUNT(*) as count 
+        SELECT
+            visit_type,
+            count(*)
         FROM Visits
-        GROUP BY visit_type 
-        ORDER BY count DESC
+        GROUP BY visit_type
+        ORDER BY count(*) DESC
     """)
     
     print("\n📊 Database Statistics")
@@ -29,14 +31,16 @@ def stats(conn):
         print(f"  {visit_type}: {row['count']:,}")
     
     # Trip counts
-    cursor.execute("SELECT COUNT(*) as count FROM Trips")
+    cursor.execute("SELECT count(*) FROM Trips")
     total_trips = cursor.fetchone()['count']
-    
+
     cursor.execute("""
-        SELECT trip_category, COUNT(*) as count
+        SELECT
+            trip_category,
+            count(*)
         FROM Trips
         GROUP BY trip_category
-        ORDER BY count DESC
+        ORDER BY count(*) DESC
     """)
     trips_by_category = cursor.fetchall()
     
@@ -46,17 +50,17 @@ def stats(conn):
         print(f"  {row['trip_category']}: {row['count']:,}")
     
     # Location counts
-    cursor.execute("SELECT COUNT(*) as count FROM Locations")
+    cursor.execute("SELECT count(*) FROM Locations")
     total_locations = cursor.fetchone()['count']
-    
+
     print(f"\nLocations:")
     print(f"  Unique cities/areas: {total_locations:,}")
-    
+
     # Date range
     cursor.execute("""
-        SELECT 
-            MIN(start_time) as first_visit,
-            MAX(end_time) as last_visit
+        SELECT
+            min(start_time) as first_visit,
+            max(end_time) as last_visit
         FROM Visits
     """)
     dates = cursor.fetchone()
@@ -73,7 +77,7 @@ def nearby(conn, lat, lon, radius_km=1):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             v.start_time,
             v.end_time,
             v.duration_minutes,
@@ -82,18 +86,22 @@ def nearby(conn, lat, lon, radius_km=1):
             l.state,
             ST_Distance(
                 v.location,
-                ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+                ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography
             ) / 1000 as distance_km
         FROM Visits v
         LEFT JOIN Locations l ON v.location_id = l.id
         WHERE ST_DWithin(
             v.location,
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-            %s
+            ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography,
+            %(radius_m)s
         )
         ORDER BY v.start_time DESC
         LIMIT 50
-    """, (lon, lat, lon, lat, radius_km * 1000))
+    """, {
+        'lat': lat,
+        'lon': lon,
+        'radius_m': radius_km * 1000,
+    })
     
     results = cursor.fetchall()
     cursor.close()
@@ -119,19 +127,21 @@ def top_places(conn, limit=10):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             l.city,
             l.state,
             l.country,
-            COUNT(*) as visit_count,
-            SUM(v.duration_minutes) / 60.0 as total_hours
+            count(*) as visit_count,
+            sum(v.duration_minutes) / 60.0 as total_hours
         FROM Visits v
         JOIN Locations l ON v.location_id = l.id
         WHERE l.city IS NOT NULL
         GROUP BY l.city, l.state, l.country
         ORDER BY visit_count DESC
-        LIMIT %s
-    """, (limit,))
+        LIMIT %(limit)s
+    """, {
+        'limit': limit,
+    })
     
     results = cursor.fetchall()
     cursor.close()
@@ -151,7 +161,7 @@ def when_at(conn, lat, lon, radius_km=0.1):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             start_time,
             end_time,
             duration_minutes,
@@ -160,11 +170,15 @@ def when_at(conn, lat, lon, radius_km=0.1):
         FROM Visits
         WHERE ST_DWithin(
             location,
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-            %s
+            ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography,
+            %(radius_m)s
         )
         ORDER BY start_time
-    """, (lon, lat, radius_km * 1000))
+    """, {
+        'lat': lat,
+        'lon': lon,
+        'radius_m': radius_km * 1000,
+    })
     
     results = cursor.fetchall()
     cursor.close()
@@ -190,14 +204,16 @@ def year_summary(conn, year):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             visit_type,
-            COUNT(*) as count
+            count(*)
         FROM Visits
-        WHERE EXTRACT(YEAR FROM start_time) = %s
+        WHERE EXTRACT(YEAR FROM start_time) = %(year)s
         GROUP BY visit_type
-        ORDER BY count DESC
-    """, (year,))
+        ORDER BY count(*) DESC
+    """, {
+        'year': year,
+    })
     
     print(f"\n📆 {year} Summary")
     print("=" * 60)
@@ -209,12 +225,16 @@ def year_summary(conn, year):
     
     # Trips this year
     cursor.execute("""
-        SELECT trip_category, COUNT(*) as count
+        SELECT
+            trip_category,
+            count(*)
         FROM Trips
-        WHERE EXTRACT(YEAR FROM start_time) = %s
+        WHERE EXTRACT(YEAR FROM start_time) = %(year)s
         GROUP BY trip_category
-        ORDER BY count DESC
-    """, (year,))
+        ORDER BY count(*) DESC
+    """, {
+        'year': year,
+    })
     
     trips = cursor.fetchall()
     if trips:
@@ -231,20 +251,22 @@ def list_trips(conn, year=None):
     
     if year:
         cursor.execute("""
-            SELECT 
+            SELECT
                 id,
                 start_time,
                 end_time,
                 trip_category,
                 cities
             FROM Trips
-            WHERE EXTRACT(YEAR FROM start_time) = %s
+            WHERE EXTRACT(YEAR FROM start_time) = %(year)s
             ORDER BY start_time
-        """, (year,))
+        """, {
+            'year': year,
+        })
         print(f"\n✈️ Trips in {year}")
     else:
         cursor.execute("""
-            SELECT 
+            SELECT
                 id,
                 start_time,
                 end_time,
@@ -282,28 +304,32 @@ def trip_details(conn, trip_id):
     
     # Get trip info
     cursor.execute("""
-        SELECT 
+        SELECT
             id,
             start_time,
             end_time,
             trip_category,
             cities
         FROM Trips
-        WHERE id = %s
-    """, (trip_id,))
-    
+        WHERE id = %(trip_id)s
+    """, {
+        'trip_id': trip_id,
+    })
+
     trip = cursor.fetchone()
-    
+
     if not trip:
         print(f"\n✗ Trip #{trip_id} not found")
         return
-    
+
     # Get visit count
     cursor.execute("""
-        SELECT COUNT(*) as count
+        SELECT count(*)
         FROM Trip_Visits
-        WHERE trip_id = %s
-    """, (trip_id,))
+        WHERE trip_id = %(trip_id)s
+    """, {
+        'trip_id': trip_id,
+    })
     visit_count = cursor.fetchone()['count']
     
     cursor.close()
@@ -325,7 +351,7 @@ def city_visits(conn, city_name):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             v.start_time,
             v.end_time,
             v.duration_minutes,
@@ -334,10 +360,12 @@ def city_visits(conn, city_name):
             l.state
         FROM Visits v
         JOIN Locations l ON v.location_id = l.id
-        WHERE LOWER(l.city) = LOWER(%s)
+        WHERE LOWER(l.city) = LOWER(%(city_name)s)
         ORDER BY v.start_time DESC
         LIMIT 100
-    """, (city_name,))
+    """, {
+        'city_name': city_name,
+    })
     
     results = cursor.fetchall()
     cursor.close()

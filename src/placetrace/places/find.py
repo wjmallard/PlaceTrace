@@ -24,25 +24,29 @@ def find_location_candidates(conn, start_date, end_date, min_hours=100):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             place_id,
             ST_Y(location::geometry) as lat,
             ST_X(location::geometry) as lon,
-            COUNT(*) as visit_count,
-            SUM(duration_minutes) / 60.0 as total_hours,
-            MIN(start_time)::date as first_visit,
-            MAX(end_time)::date as last_visit,
+            count(*) as visit_count,
+            sum(duration_minutes) / 60.0 as total_hours,
+            min(start_time)::date as first_visit,
+            max(end_time)::date as last_visit,
             semantic_type,
             location_id
         FROM Visits
-        WHERE start_time::date >= %s
-          AND end_time::date <= %s
+        WHERE start_time::date >= %(start_date)s
+          AND end_time::date <= %(end_date)s
           AND place_id IS NOT NULL
         GROUP BY place_id, lat, lon, semantic_type, location_id
-        HAVING SUM(duration_minutes) / 60.0 >= %s
+        HAVING sum(duration_minutes) / 60.0 >= %(min_hours)s
         ORDER BY total_hours DESC
         LIMIT 20
-    """, (start_date, end_date, min_hours))
+    """, {
+        'start_date': start_date,
+        'end_date': end_date,
+        'min_hours': min_hours,
+    })
     
     results = cursor.fetchall()
     cursor.close()
