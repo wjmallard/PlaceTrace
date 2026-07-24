@@ -323,6 +323,7 @@ function placeTraceApp() {
                 [visit.latitude, visit.longitude],
                 { icon: this.visitIcon(isSelected) }
             );
+            marker.visitId = visit.id;
 
             // Popup with visit info
             const popupContent = `
@@ -374,15 +375,22 @@ function placeTraceApp() {
         },
 
         // Sync visit markers with this.visits, adding/removing only what changed
-        // (a refresh that returns the same visits does no DOM work at all)
+        // (a refresh that returns the same visits does no DOM work at all).
+        // Membership is derived from the cluster group itself each time, not from
+        // our own bookkeeping, so any transient divergence (an operation deferred
+        // or dropped mid zoom animation) heals on the next sync instead of
+        // leaving permanent holes.
         renderMarkers() {
             const wanted = new Map(this.visits.map(visit => [visit.id, visit]));
 
             const toRemove = [];
-            for (const [id, marker] of visitMarkers) {
-                if (!wanted.has(id)) {
+            visitMarkers.clear();
+            for (const marker of this.markerLayer.getLayers()) {
+                if (wanted.has(marker.visitId) && !visitMarkers.has(marker.visitId)) {
+                    visitMarkers.set(marker.visitId, marker);
+                } else {
+                    // Unwanted, or a duplicate of one already kept
                     toRemove.push(marker);
-                    visitMarkers.delete(id);
                 }
             }
 
