@@ -1,16 +1,14 @@
-#!/usr/bin/env python3
 """
-Location Manager
-Auto-detect and manage home/work locations that change over time
+pt-manage-places — Auto-detect and manage home/work locations that change over time.
 
 Usage:
-    python manage_locations.py --detect home    # Auto-detect all homes
-    python manage_locations.py --detect work    # Auto-detect all workplaces
-    python manage_locations.py --list           # List current locations
+    pt-manage-places --detect home    # Auto-detect all homes
+    pt-manage-places --detect work    # Auto-detect all workplaces
+    pt-manage-places --list           # List current locations
 """
 
+import argparse
 import json
-import sys
 from datetime import date
 from collections import defaultdict
 
@@ -325,14 +323,14 @@ def list_locations(location_type):
     """List current locations from config file"""
     locations = load_locations(location_type)
     emoji = "🏠" if location_type == "home" else "💼"
-    
+
     print("\n" + "="*80)
     print(f"{emoji} CONFIGURED {location_type.upper()} LOCATIONS")
     print("="*80)
-    
+
     if not locations:
         print(f"\nNo {location_type} locations configured yet.")
-        print(f"Run: python manage_locations.py --detect {location_type}")
+        print(f"Run: pt-manage-places --detect {location_type}")
     else:
         print()
         for i, loc in enumerate(locations, 1):
@@ -348,32 +346,23 @@ def list_locations(location_type):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python manage_locations.py [--detect home|work] [--list]")
-        print()
-        print("Commands:")
-        print("  --detect home      Auto-detect all home locations")
-        print("  --detect work      Auto-detect all work locations")
-        print("  --list             List all configured locations")
-        print()
-        print("Examples:")
-        print("  python manage_locations.py --detect home")
-        print("  python manage_locations.py --detect work")
-        print("  python manage_locations.py --list")
-        sys.exit(0)
-    
-    command = sys.argv[1]
-    
-    if command == '--detect':
-        if len(sys.argv) < 3:
-            print("Error: --detect requires location type (home or work)")
-            sys.exit(1)
-        
-        location_type = sys.argv[2].lower()
-        if location_type not in ['home', 'work']:
-            print("Error: Location type must be 'home' or 'work'")
-            sys.exit(1)
-        
+    parser = argparse.ArgumentParser(description="Auto-detect and manage home/work locations.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--detect",
+        choices=["home", "work"],
+        help="auto-detect all home or work locations",
+    )
+    group.add_argument(
+        "--list",
+        action="store_true",
+        help="list all configured locations",
+    )
+    args = parser.parse_args()
+
+    if args.detect:
+        location_type = args.detect
+
         print("="*80)
         if location_type == 'home':
             print("🏠 AUTO-DETECT HOME LOCATIONS")
@@ -383,36 +372,31 @@ def main():
         print()
         print("Analyzing location history to find continuous residency/employment periods...")
         print()
-        
+
         conn = get_main_connection()
-        
+
         try:
             if location_type == 'home':
                 detected = auto_detect_homes(conn, min_months=2)
             else:
                 detected = auto_detect_work(conn, min_months=2)
-            
+
             if detected:
                 review_and_save_detected(conn, location_type, detected)
             else:
                 print(f"\nNo {location_type} locations detected.")
                 print("Try adjusting the min_months parameter in the code.")
-        
+
         finally:
             conn.close()
-    
-    elif command == '--list':
+
+    else:
         print("="*80)
         print("LOCATION CONFIGURATION")
         print("="*80)
-        
+
         list_locations('home')
         list_locations('work')
-    
-    else:
-        print(f"Unknown command: {command}")
-        print("Use --detect or --list")
-        sys.exit(1)
 
 
 if __name__ == '__main__':
