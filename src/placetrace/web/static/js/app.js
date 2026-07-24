@@ -644,24 +644,14 @@ function placeTraceApp() {
             }
         },
         
-        // Quick preset: Past week
-        setPastWeek() {
-            const now = new Date();
-            const past = new Date(now - 7*24*60*60*1000);
-            
-            this.timeFilterEnabled = true;
-            this.startDate = past.toISOString().split('T')[0];
-            this.endDate = now.toISOString().split('T')[0];
-
-            this.applyDateFilter();
-        },
-
-        // Quick preset: Past month
-        setPastMonth() {
+        // Quick preset: set the date filter to a past window ending today
+        setPastRange({ days = 0, months = 0, years = 0 }) {
             const now = new Date();
             const past = new Date(now);
-            past.setMonth(past.getMonth() - 1);
-            
+            past.setDate(past.getDate() - days);
+            past.setMonth(past.getMonth() - months);
+            past.setFullYear(past.getFullYear() - years);
+
             this.timeFilterEnabled = true;
             this.startDate = past.toISOString().split('T')[0];
             this.endDate = now.toISOString().split('T')[0];
@@ -669,18 +659,9 @@ function placeTraceApp() {
             this.applyDateFilter();
         },
 
-        // Quick preset: Past year
-        setPastYear() {
-            const now = new Date();
-            const past = new Date(now);
-            past.setFullYear(past.getFullYear() - 1);
-            
-            this.timeFilterEnabled = true;
-            this.startDate = past.toISOString().split('T')[0];
-            this.endDate = now.toISOString().split('T')[0];
-
-            this.applyDateFilter();
-        },
+        setPastWeek() { this.setPastRange({ days: 7 }); },
+        setPastMonth() { this.setPastRange({ months: 1 }); },
+        setPastYear() { this.setPastRange({ years: 1 }); },
 
         // Clear date range filter
         clearDateFilter() {
