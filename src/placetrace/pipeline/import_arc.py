@@ -219,7 +219,7 @@ def label_visits_with_places(conn):
     cursor = conn.cursor()
     arc_visits = 0
     named = 0
-    labeled = 0
+    labeled_ids = set()
 
     for path in tqdm(daily_files(), desc="Labeling places"):
         for item in load_daily(path):
@@ -244,6 +244,7 @@ def label_visits_with_places(conn):
                       ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography,
                       %(radius_m)s
                   )
+                RETURNING id
             """, {
                 'name': name,
                 'arc_start': parse_timestamp(item['startDate']),
@@ -252,15 +253,15 @@ def label_visits_with_places(conn):
                 'lon': center['longitude'],
                 'radius_m': PLACE_MATCH_RADIUS_M,
             })
-            labeled += cursor.rowcount
+            labeled_ids.update(row['id'] for row in cursor.fetchall())
 
         conn.commit()
 
     cursor.close()
 
-    print(f"✓ Labeled {labeled:,} visits from {named:,} named Arc visits ({arc_visits:,} total)")
+    print(f"✓ Labeled {len(labeled_ids):,} visits from {named:,} named Arc visits ({arc_visits:,} total)")
 
-    return labeled
+    return len(labeled_ids)
 
 
 def main(argv=None):
