@@ -31,6 +31,9 @@ OSM_DB = _config["databases"]["osm"]
 
 LOCATION_HISTORY_JSON = Path(_config["source_data"]["location_history_json"]).expanduser()
 
+_arc_export_dir = _config["source_data"].get("arc_export_dir")
+ARC_EXPORT_DIR = Path(_arc_export_dir).expanduser() if _arc_export_dir else None
+
 TRIPS = _config["trips"]
 TRIP_CATEGORIES = _config["trips"]["categories"]
 

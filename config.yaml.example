@@ -8,6 +8,7 @@ databases:
 # Source Data
 source_data:
   location_history_json: /path/to/location-history.json
+  # arc_export_dir: /path/to/Arc App/Export/JSON/Daily  # Optional Arc app daily exports
 
 # Trip Detection Settings
 trips:

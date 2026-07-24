@@ -25,6 +25,7 @@ def main():
         print("\nPipeline steps (also available individually):\n")
         print(f"  {"pt-import-visits":<25} Import visits from Google Timeline JSON")
         print(f"  {"pt-import-movements":<25} Import movements from Google Timeline JSON")
+        print(f"  {"pt-import-arc":<25} Import Arc app exports (movements + place names)")
         print(f"  {"pt-geocode":<25} Batch reverse-geocode visits")
         print(f"  {"pt-detect-trips":<25} Detect and categorize trips from visit history")
     else:
