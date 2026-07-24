@@ -13,7 +13,6 @@ Usage:
 
 from tqdm import tqdm
 import sys
-from collections import defaultdict
 
 from placetrace.db import get_main_connection, geocode_point, get_or_create_location
 from placetrace.config import config
@@ -35,9 +34,7 @@ def worker_geocode(lat_lon):
 def get_unique_coordinates(conn):
     """
     Get all unique coordinates from Visits needing geocoding.
-    Returns:
-        - List of (lat, lon) tuples for workers
-        - Dict mapping (lat, lon) to record IDs: {(lat, lon): {'visits': [ids]}}
+    Returns a dict mapping (lat, lon) to the visit ids at that coordinate.
     """
     print("\nFinding unique coordinates to geocode...")
 
@@ -57,38 +54,30 @@ def get_unique_coordinates(conn):
 
     cursor.close()
 
-    # Build mapping: (lat, lon) → {visits: [ids]}
-    coord_to_records = defaultdict(lambda: {'visits': []})
-
-    for row in visits_coords:
-        lat = float(row['lat'])
-        lon = float(row['lon'])
-        key = (lat, lon)
-        coord_to_records[key]['visits'] = row['visit_ids']
-
-    # Create simple list for workers
-    coord_list = list(coord_to_records.keys())
+    coord_to_visit_ids = {
+        (float(row['lat']), float(row['lon'])): row['visit_ids']
+        for row in visits_coords
+    }
 
     # Calculate totals
-    total_unique = len(coord_list)
-    total_visits = sum(len(c['visits']) for c in coord_to_records.values())
+    total_unique = len(coord_to_visit_ids)
+    total_visits = sum(len(ids) for ids in coord_to_visit_ids.values())
 
     print(f"Found {total_unique:,} unique coordinates:")
     print(f"  {total_visits:,} visits need geocoding")
     if total_unique > 0:
         print(f"  Average {total_visits / total_unique:.1f} records per coordinate")
 
-    return coord_list, coord_to_records
+    return coord_to_visit_ids
 
 
-def geocode_and_update(conn, coord_list, coord_to_records):
+def geocode_and_update(conn, coord_to_visit_ids):
     """
     Geocode coordinates in parallel, update database sequentially.
 
     Args:
         conn: Database connection (main database)
-        coord_list: List of (lat, lon) tuples to geocode
-        coord_to_records: Dict mapping (lat, lon) to {'visits': [ids]}
+        coord_to_visit_ids: Dict mapping (lat, lon) to the visit ids there
 
     Returns:
         geocoded_visits count
@@ -102,6 +91,7 @@ def geocode_and_update(conn, coord_list, coord_to_records):
     num_workers = config['processing'].get('num_workers', 4)
     print(f"Using {num_workers} workers for parallel geocoding")
 
+    coord_list = list(coord_to_visit_ids.keys())
     cursor = conn.cursor()
     geocoded_visits = 0
     failed_coords = 0
@@ -127,17 +117,15 @@ def geocode_and_update(conn, coord_list, coord_to_records):
                         failed_coords += 1
                         continue
 
-                    # Get record IDs for this coordinate
-                    record_ids = coord_to_records[(lat, lon)]
-
                     # Update all visits at this coordinate
-                    if record_ids['visits']:
+                    visit_ids = coord_to_visit_ids[(lat, lon)]
+                    if visit_ids:
                         cursor.execute("""
                             UPDATE Visits
                             SET location_id = %s
                             WHERE id = ANY(%s)
-                        """, (location_id, record_ids['visits']))
-                        geocoded_visits += len(record_ids['visits'])
+                        """, (location_id, visit_ids))
+                        geocoded_visits += len(visit_ids)
 
                     # Commit after each coordinate (ensures progress is saved)
                     conn.commit()
@@ -225,14 +213,14 @@ def main():
     
     try:
         # Step 1: Get unique coordinates needing geocoding
-        coord_list, coord_to_records = get_unique_coordinates(conn)
-        
-        if not coord_list:
+        coord_to_visit_ids = get_unique_coordinates(conn)
+
+        if not coord_to_visit_ids:
             print("\n✓ Nothing to geocode - all records already have location_id")
             return
-        
+
         # Step 2: Geocode in parallel and update sequentially
-        geocode_and_update(conn, coord_list, coord_to_records)
+        geocode_and_update(conn, coord_to_visit_ids)
         
         # Step 3: Print summary
         print_summary(conn)
