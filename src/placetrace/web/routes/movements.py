@@ -149,6 +149,19 @@ def get_movements():
         where.append("m.source = %(source)s")
         params['source'] = source
         filters['source'] = source
+    else:
+        # Arc tracks are denser than Google's; when both sources cover the
+        # requested day, show only Arc (pass source= explicitly to override)
+        where.append("""(
+            m.source != 'google_timeline'
+            OR NOT EXISTS (
+                SELECT 1
+                FROM Movements arc
+                WHERE arc.source = 'arc'
+                  AND arc.local_start_date <= %(date)s
+                  AND arc.local_end_date >= %(date)s
+            )
+        )""")
 
     # Movements whose preceding or following visit belongs to this trip
     if trip_id:
