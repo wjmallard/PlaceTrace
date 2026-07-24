@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
 """
-Interactive Location Finder
-Find and add home or work locations for specific date ranges
+pt-find-places — Find and add home or work locations for specific date ranges.
 
 Usage:
-    python find_location.py home 2018-01-01 2019-12-31
-    python find_location.py work 2013-02-01 2016-07-01
+    pt-find-places home                        # interactive mode
+    pt-find-places work 2018-01-01 2020-12-31
+    pt-find-places home 2015-06-01 present
 """
 
+import argparse
 import json
 import sys
 from datetime import datetime, date
@@ -114,35 +114,37 @@ def interactive_mode(location_type):
 
 
 def main():
-    # Parse command line arguments
-    if len(sys.argv) < 2:
-        print("Usage: python find_location.py [home|work] [start_date] [end_date]")
-        print()
-        print("Examples:")
-        print("  python find_location.py home                    # Interactive mode")
-        print("  python find_location.py work 2018-01-01 2020-12-31")
-        print("  python find_location.py home 2015-06-01 present")
-        sys.exit(1)
-    
-    location_type = sys.argv[1].lower()
-    if location_type not in ['home', 'work']:
-        print("Error: Location type must be 'home' or 'work'")
-        sys.exit(1)
-    
-    # Determine config file
+    parser = argparse.ArgumentParser(description="Find home/work locations for a date range.")
+    parser.add_argument(
+        "location_type",
+        choices=["home", "work"],
+        help="location type to find",
+    )
+    parser.add_argument(
+        "start_date",
+        nargs="?",
+        help="start date (YYYY-MM-DD); interactive mode if omitted",
+    )
+    parser.add_argument(
+        "end_date",
+        nargs="?",
+        help="end date (YYYY-MM-DD), or 'present'",
+    )
+    args = parser.parse_args()
+
+    location_type = args.location_type
     config_file = project_root / "data" / f"{location_type}_locations.json"
 
     # Get date range (from args or interactive)
-    if len(sys.argv) >= 4:
+    if args.start_date and args.end_date:
         # Command line mode
         try:
-            start_date = parse_date(sys.argv[2])
-            end_str = sys.argv[3]
-            if end_str.lower() in ['present', 'now']:
+            start_date = parse_date(args.start_date)
+            if args.end_date.lower() in ['present', 'now']:
                 end_date = date.today()
                 is_present = True
             else:
-                end_date = parse_date(end_str)
+                end_date = parse_date(args.end_date)
                 is_present = False
         except ValueError as e:
             print(f"Error parsing dates: {e}")
