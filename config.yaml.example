@@ -48,14 +48,3 @@ map:
   tiles:
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
     attribution: 'Esri'
-
-# Performance Settings (for web interface)
-performance:
-  cache_ttl_seconds: 300            # How long to cache database queries (5 minutes)
-  max_points_default: 5000          # Default maximum points to display on map
-  max_points_options:               # Available options in max points slider
-    - 1000
-    - 2500
-    - 5000
-    - 10000
-    - 25000
