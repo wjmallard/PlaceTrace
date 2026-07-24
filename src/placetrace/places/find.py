@@ -10,14 +10,13 @@ Usage:
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime, date
 
 from placetrace.db import get_main_connection
 from placetrace.config import project_root
 
 
-def find_location_candidates(conn, location_type, start_date, end_date, min_hours=100):
+def find_location_candidates(conn, start_date, end_date, min_hours=100):
     """
     Find candidate locations for a date range.
     Returns locations ranked by time spent.
@@ -84,7 +83,7 @@ def get_location_name(conn, location_id, lat, lon):
         return result['country']
 
 
-def format_location_json(location_type, place_id, lat, lon, name, start_date, end_date):
+def format_location_json(place_id, lat, lon, name, start_date, end_date):
     """Format as JSON for home_locations.json or work_locations.json"""
     return {
         "place_id": place_id,
@@ -165,8 +164,7 @@ def main():
     
     # Determine config file
     config_file = project_root / "data" / f"{location_type}_locations.json"
-    emoji = "🏠" if location_type == "home" else "💼"
-    
+
     # Get date range (from args or interactive)
     if len(sys.argv) >= 4:
         # Command line mode
@@ -200,7 +198,7 @@ def main():
     try:
         # Find candidates
         print("🔍 Finding candidate locations...")
-        candidates = find_location_candidates(conn, location_type, start_date, end_date, min_hours=100)
+        candidates = find_location_candidates(conn, start_date, end_date, min_hours=100)
         
         if not candidates:
             print("\n✗ No locations found with 100+ hours in this period.")
@@ -264,7 +262,6 @@ def main():
         
         # Generate JSON
         location_entry = format_location_json(
-            location_type,
             selected['place_id'],
             selected['lat'],
             selected['lon'],

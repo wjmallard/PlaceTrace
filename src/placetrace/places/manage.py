@@ -11,8 +11,7 @@ Usage:
 
 import json
 import sys
-from pathlib import Path
-from datetime import datetime, date
+from datetime import date
 from collections import defaultdict
 
 from placetrace.db import get_main_connection

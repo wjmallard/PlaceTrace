@@ -20,7 +20,7 @@ Usage:
 
 import orjson
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from tqdm import tqdm
 import sys
 
@@ -286,7 +286,7 @@ def parse_activity_old_format(obj):
         end_time_str = obj['endTime']
         start_time = parse_timestamp(start_time_str)
         end_time = parse_timestamp(end_time_str)
-    except (KeyError, ValueError) as e:
+    except (KeyError, ValueError):
         return None
     
     # Extract local date/time from both start and end timestamps
@@ -351,7 +351,7 @@ def parse_activity_new_format(obj):
         end_time_str = obj['endTime']
         start_time = parse_timestamp(start_time_str)
         end_time = parse_timestamp(end_time_str)
-    except (KeyError, ValueError) as e:
+    except (KeyError, ValueError):
         return None
     
     # Extract local date/time from both start and end timestamps
@@ -424,7 +424,7 @@ def parse_breadcrumb_trail(obj):
         end_time_str = obj['endTime']
         start_time = parse_timestamp(start_time_str)
         end_time = parse_timestamp(end_time_str)
-    except (KeyError, ValueError) as e:
+    except (KeyError, ValueError):
         return None
     
     # Extract local date/time from both start and end timestamps
