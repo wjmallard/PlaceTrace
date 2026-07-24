@@ -342,6 +342,76 @@ def parse_breadcrumb_trail(obj):
     }
 
 
+def insert_movement(cursor, movement, preceding_visit_id, following_visit_id):
+    """Insert one parsed movement dict into the Movements table."""
+    start_lat, start_lon = movement['start_location']
+    end_lat, end_lon = movement['end_location']
+    source_metadata_json = orjson.dumps(movement['source_metadata']).decode('utf-8') if movement['source_metadata'] else None
+
+    cursor.execute("""
+        INSERT INTO Movements (
+            start_time,
+            end_time,
+            duration_minutes,
+            local_start_date,
+            local_start_time,
+            local_end_date,
+            local_end_time,
+            start_location,
+            end_location,
+            route_geometry,
+            activity_type,
+            confidence,
+            distance_meters,
+            source,
+            movement_type,
+            source_metadata,
+            preceding_visit_id,
+            following_visit_id
+        ) VALUES (
+            %(start_time)s,
+            %(end_time)s,
+            %(duration_minutes)s,
+            %(local_start_date)s,
+            %(local_start_time)s,
+            %(local_end_date)s,
+            %(local_end_time)s,
+            ST_SetSRID(ST_MakePoint(%(start_lon)s, %(start_lat)s), 4326)::geography,
+            ST_SetSRID(ST_MakePoint(%(end_lon)s, %(end_lat)s), 4326)::geography,
+            ST_GeomFromText(%(route_geometry)s, 4326)::geography,
+            %(activity_type)s,
+            %(confidence)s,
+            %(distance_meters)s,
+            %(source)s,
+            %(movement_type)s,
+            %(source_metadata)s,
+            %(preceding_visit_id)s,
+            %(following_visit_id)s
+        )
+    """, {
+        'start_time': movement['start_time'],
+        'end_time': movement['end_time'],
+        'duration_minutes': movement['duration_minutes'],
+        'local_start_date': movement['local_start_date'],
+        'local_start_time': movement['local_start_time'],
+        'local_end_date': movement['local_end_date'],
+        'local_end_time': movement['local_end_time'],
+        'start_lat': start_lat,
+        'start_lon': start_lon,
+        'end_lat': end_lat,
+        'end_lon': end_lon,
+        'route_geometry': movement['route_geometry'],
+        'activity_type': movement['activity_type'],
+        'confidence': movement['confidence'],
+        'distance_meters': movement['distance_meters'],
+        'source': movement['source'],
+        'movement_type': movement['movement_type'],
+        'source_metadata': source_metadata_json,
+        'preceding_visit_id': preceding_visit_id,
+        'following_visit_id': following_visit_id,
+    })
+
+
 def import_movements_to_database(conn, movements, force=False):
     """
     Import movements into Movements table.
@@ -394,9 +464,6 @@ def import_movements_to_database(conn, movements, force=False):
     
     try:
         for movement in tqdm(movements, desc="Importing movements"):
-            start_lat, start_lon = movement['start_location']
-            end_lat, end_lon = movement['end_location']
-            
             # Find adjacent visits
             preceding_visit_id = find_adjacent_visit(
                 conn, 
@@ -417,73 +484,8 @@ def import_movements_to_database(conn, movements, force=False):
             if following_visit_id:
                 linked_to_following += 1
             
-            # Convert source_metadata to JSON string
-            source_metadata_json = orjson.dumps(movement['source_metadata']).decode('utf-8') if movement['source_metadata'] else None
-            
-            # Insert movement
-            cursor.execute("""
-                INSERT INTO Movements (
-                    start_time,
-                    end_time,
-                    duration_minutes,
-                    local_start_date,
-                    local_start_time,
-                    local_end_date,
-                    local_end_time,
-                    start_location,
-                    end_location,
-                    route_geometry,
-                    activity_type,
-                    confidence,
-                    distance_meters,
-                    source,
-                    movement_type,
-                    source_metadata,
-                    preceding_visit_id,
-                    following_visit_id
-                ) VALUES (
-                    %(start_time)s,
-                    %(end_time)s,
-                    %(duration_minutes)s,
-                    %(local_start_date)s,
-                    %(local_start_time)s,
-                    %(local_end_date)s,
-                    %(local_end_time)s,
-                    ST_SetSRID(ST_MakePoint(%(start_lon)s, %(start_lat)s), 4326)::geography,
-                    ST_SetSRID(ST_MakePoint(%(end_lon)s, %(end_lat)s), 4326)::geography,
-                    ST_GeomFromText(%(route_geometry)s, 4326)::geography,
-                    %(activity_type)s,
-                    %(confidence)s,
-                    %(distance_meters)s,
-                    %(source)s,
-                    %(movement_type)s,
-                    %(source_metadata)s,
-                    %(preceding_visit_id)s,
-                    %(following_visit_id)s
-                )
-            """, {
-                'start_time': movement['start_time'],
-                'end_time': movement['end_time'],
-                'duration_minutes': movement['duration_minutes'],
-                'local_start_date': movement['local_start_date'],
-                'local_start_time': movement['local_start_time'],
-                'local_end_date': movement['local_end_date'],
-                'local_end_time': movement['local_end_time'],
-                'start_lat': start_lat,
-                'start_lon': start_lon,
-                'end_lat': end_lat,
-                'end_lon': end_lon,
-                'route_geometry': movement['route_geometry'],
-                'activity_type': movement['activity_type'],
-                'confidence': movement['confidence'],
-                'distance_meters': movement['distance_meters'],
-                'source': movement['source'],
-                'movement_type': movement['movement_type'],
-                'source_metadata': source_metadata_json,
-                'preceding_visit_id': preceding_visit_id,
-                'following_visit_id': following_visit_id,
-            })
-            
+            insert_movement(cursor, movement, preceding_visit_id, following_visit_id)
+
             imported_count += 1
             
             # Commit every 1000 records
