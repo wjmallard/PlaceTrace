@@ -1,8 +1,13 @@
 // PlaceTrace Alpine.js App
 
-// Visit id -> Leaflet marker. Kept outside the Alpine component so the
+// Spot key -> Leaflet marker. Kept outside the Alpine component so the
 // markers are not wrapped in reactive proxies.
-const visitMarkers = new Map();
+const spotMarkers = new Map();
+
+// Stable identity for a spot (coordinates rounded to 6 decimals, matching the API)
+function spotKey(lat, lon) {
+    return lat.toFixed(6) + ',' + lon.toFixed(6);
+}
 
 function placeTraceApp() {
     return {
@@ -12,7 +17,7 @@ function placeTraceApp() {
         spatialFilterMarker: null,
         spatialFilterCircle: null,
         loading: false,
-        visits: [],
+        spots: [],
         
         // Geohash encoding function
         encodeGeohash(lat, lon, precision = 10) {
@@ -59,7 +64,7 @@ function placeTraceApp() {
         
         trips: [],
         activeTripTab: 'day',
-        selectedVisit: null,  // Currently selected visit
+        selectedSpot: null,  // Currently selected spot
         spaceFilterEnabled: false,
         timeFilterEnabled: false,
         
@@ -133,7 +138,7 @@ function placeTraceApp() {
         movements: [],
         movementLayer: null,
         showAllNearbyVisits: false,  // Default: show only selected day visits
-        savedVisitState: null,   // Store visits to restore when showing all nearby
+        savedSpotState: null,   // Set while tracks mode has replaced the spot markers
         
         // Viewport-driven reload state
         moveDebounce: null,     // Debounce timer for moveend refreshes
@@ -155,7 +160,7 @@ function placeTraceApp() {
             // Wait for map to be ready before loading data
             this.map.whenReady(() => {
                 this.loadTrips();
-                this.loadRecentVisits();
+                this.loadSpots();
             });
         },
         
@@ -179,13 +184,24 @@ function placeTraceApp() {
                 keepBuffer: 4
             }).addTo(this.map);
             
-            // Create marker cluster group
+            // Create marker cluster group; cluster bubbles show the total visit
+            // count of their child spots, not the number of markers
             this.markerLayer = L.markerClusterGroup({
                 maxClusterRadius: 50,
                 spiderfyOnMaxZoom: true,
                 showCoverageOnHover: false,
                 zoomToBoundsOnClick: true,
-                animate: false  // Disable all animations to prevent conflicts
+                animate: false,  // Disable all animations to prevent conflicts
+                iconCreateFunction: (cluster) => {
+                    const total = cluster.getAllChildMarkers()
+                        .reduce((sum, marker) => sum + (marker.spotCount || 1), 0);
+                    const bucket = total < 100 ? 'small' : total < 1000 ? 'medium' : 'large';
+                    return L.divIcon({
+                        html: `<div><span>${this.formatCount(total)}</span></div>`,
+                        className: `marker-cluster marker-cluster-${bucket}`,
+                        iconSize: L.point(40, 40)
+                    });
+                }
             }).addTo(this.map);
             
             // Create movement layer (below markers)
@@ -196,8 +212,8 @@ function placeTraceApp() {
                 // Only set spatial filter if space filter is enabled
                 if (this.spaceFilterEnabled) {
                     this.setSpatialFilter(e.latlng.lat, e.latlng.lng);
-                    this.selectedVisit = null; // Clear selected visit since we're clicking arbitrary point
-                    this.loadRecentVisits();
+                    this.selectedSpot = null; // Clear selected spot since we're clicking arbitrary point
+                    this.loadSpots();
                 }
             });
             
@@ -210,7 +226,7 @@ function placeTraceApp() {
                 if (!this.filterManager.tripId && !this.filterManager.spatial.lat && !this.filterManager.temporal.start && !this.showMovement) {
                     // Debounced background refresh: no loading overlay while panning/zooming
                     clearTimeout(this.moveDebounce);
-                    this.moveDebounce = setTimeout(() => this.loadRecentVisits({ background: true }), 250);
+                    this.moveDebounce = setTimeout(() => this.loadSpots({ background: true }), 250);
                 }
             });
             
@@ -242,9 +258,9 @@ function placeTraceApp() {
             }
         },
         
-        // Load all visits (no date/limit filters)
+        // Load spots (aggregated visit locations) for the current filters/viewport
         // background: true skips the loading overlay (viewport refreshes on pan/zoom)
-        async loadRecentVisits({ background = false } = {}) {
+        async loadSpots({ background = false } = {}) {
             if (!background) {
                 this.loading = true;
             }
@@ -257,7 +273,7 @@ function placeTraceApp() {
                     map: this.map
                 });
 
-                const response = await fetch(`/api/visits?${params}`);
+                const response = await fetch(`/api/spots?${params}`);
                 const data = await response.json();
 
                 // A newer request superseded this one - discard the stale response
@@ -265,9 +281,9 @@ function placeTraceApp() {
                     return;
                 }
 
-                this.visits = data.visits;
+                this.spots = data.spots;
                 this.renderMarkers();
-                this.fitMapToVisits();
+                this.fitMapToSpots();
 
                 // Reload table if visible
                 if (this.showVisitTable) {
@@ -275,26 +291,39 @@ function placeTraceApp() {
                 }
 
             } catch (error) {
-                console.error('Error loading visits:', error);
+                console.error('Error loading spots:', error);
             } finally {
                 if (!background) {
                     this.loading = false;
                 }
             }
         },
-        
-        // Load visits for selected trip
+
+        // Load spots for selected trip
         async loadTripVisits(tripId) {
             this.filterManager.tripId = tripId;
-            await this.loadRecentVisits();
+            await this.loadSpots();
         },
         
-        // Build the circle icon for a visit marker
-        visitIcon(isSelected) {
-            const size = 12;
+        // Icon size scales with visit count (12px for a single visit, up to 40px)
+        spotSize(count) {
+            return Math.min(40, 12 + Math.round(8 * Math.log10(Math.max(1, count))));
+        },
+
+        // Compact count label: 1417 -> "1.4k"
+        formatCount(count) {
+            return count >= 1000 ? (count / 1000).toFixed(1) + 'k' : String(count);
+        },
+
+        // Build the circle icon for a spot marker
+        spotIcon(spot, isSelected) {
+            const size = this.spotSize(spot.visit_count);
             const fillColor = isSelected ? '#DC2626' : '#3B82F6';  // darker red or blue
             const borderColor = isSelected ? '#991B1B' : '#1E40AF';  // dark red or dark blue
             const borderWidth = isSelected ? 3 : 1;
+            const label = spot.visit_count > 1
+                ? `<span style="color: white; font-size: 10px; font-weight: 600;">${this.formatCount(spot.visit_count)}</span>`
+                : '';
 
             const markerHtml = `
                 <div style="
@@ -304,8 +333,10 @@ function placeTraceApp() {
                     border: ${borderWidth}px solid ${borderColor};
                     border-radius: 50%;
                     opacity: 0.9;
-                ">
-                </div>
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                ">${label}</div>
             `;
 
             return L.divIcon({
@@ -316,78 +347,90 @@ function placeTraceApp() {
             });
         },
 
-        // Create a marker (with popup and click handler) for a visit
-        createVisitMarker(visit) {
-            const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
-            const marker = L.marker(
-                [visit.latitude, visit.longitude],
-                { icon: this.visitIcon(isSelected) }
-            );
-            marker.visitId = visit.id;
-
-            // Popup with visit info
-            const popupContent = `
+        spotPopup(spot) {
+            const visits = spot.visit_count === 1 ? '1 visit' : `${spot.visit_count} visits`;
+            return `
                 <div class="text-sm">
-                    <div class="font-semibold">${visit.location_name}</div>
-                    <div class="text-gray-600 mt-1">
-                        ${this.formatLocalDateTime(visit.local_start_date, visit.local_start_time)}
-                    </div>
-                    <div class="text-gray-600">
-                        ${visit.duration_minutes} minutes
-                    </div>
+                    <div class="font-semibold">${spot.location_name}</div>
+                    <div class="text-gray-600 mt-1">${visits} · ${this.formatDuration(spot.total_minutes)}</div>
+                    <div class="text-gray-600">Last visit: ${spot.last_local_date}</div>
                 </div>
             `;
-            marker.bindPopup(popupContent);
+        },
 
-            // Click handler - select this visit and optionally set spatial filter
+        isSelectedSpot(spot) {
+            return this.selectedSpot !== null
+                && spotKey(spot.latitude, spot.longitude) === spotKey(this.selectedSpot.latitude, this.selectedSpot.longitude);
+        },
+
+        // Create a marker (with popup and click handler) for a spot
+        createSpotMarker(spot) {
+            const marker = L.marker(
+                [spot.latitude, spot.longitude],
+                { icon: this.spotIcon(spot, this.isSelectedSpot(spot)) }
+            );
+            marker.spotKey = spotKey(spot.latitude, spot.longitude);
+            marker.spotCount = spot.visit_count;
+            marker.spot = spot;
+
+            marker.bindPopup(this.spotPopup(spot));
+
+            // Click handler - select this spot and optionally set spatial filter
             marker.on('click', (e) => {
-                // If space filter is enabled, set spatial filter centered on this visit
+                // If space filter is enabled, set spatial filter centered on this spot
                 if (this.spaceFilterEnabled) {
                     // Stop event propagation so map click handler doesn't fire
                     L.DomEvent.stopPropagation(e);
-                    this.setSpatialFilter(visit.latitude, visit.longitude, false); // Don't show X, visit marker shows selection
-                    this.loadRecentVisits();
+                    this.setSpatialFilter(spot.latitude, spot.longitude, false); // Don't show X, spot marker shows selection
+                    this.loadSpots();
                 }
 
-                this.setSelectedVisit(visit);
-
-                // Scroll table to show this visit
-                this.scrollTableToVisit(visit.id);
+                this.setSelectedSpot(marker.spot);
             });
 
             return marker;
         },
 
-        // Select (or clear, with null) a visit, restyling only the affected markers
-        setSelectedVisit(visit) {
-            const prevId = this.selectedVisit ? this.selectedVisit.id : null;
-            this.selectedVisit = visit;
+        // Select (or clear, with null) a spot, restyling only the affected markers
+        setSelectedSpot(spot) {
+            const prevKey = this.selectedSpot ? spotKey(this.selectedSpot.latitude, this.selectedSpot.longitude) : null;
+            this.selectedSpot = spot;
 
-            const prevMarker = prevId !== null ? visitMarkers.get(prevId) : null;
+            const prevMarker = prevKey !== null ? spotMarkers.get(prevKey) : null;
             if (prevMarker) {
-                prevMarker.setIcon(this.visitIcon(false));
+                prevMarker.setIcon(this.spotIcon(prevMarker.spot, false));
             }
 
-            const newMarker = visit ? visitMarkers.get(visit.id) : null;
+            const newMarker = spot ? spotMarkers.get(spotKey(spot.latitude, spot.longitude)) : null;
             if (newMarker) {
-                newMarker.setIcon(this.visitIcon(true));
+                newMarker.setIcon(this.spotIcon(newMarker.spot, true));
             }
         },
 
-        // Sync visit markers with this.visits, adding/removing only what changed
-        // (a refresh that returns the same visits does no DOM work at all).
+        // Sync spot markers with this.spots, adding/removing only what changed
+        // (a refresh that returns the same spots does no DOM work at all).
         // Membership is derived from the cluster group itself each time, not from
         // our own bookkeeping, so any transient divergence (an operation deferred
         // or dropped mid zoom animation) heals on the next sync instead of
         // leaving permanent holes.
         renderMarkers() {
-            const wanted = new Map(this.visits.map(visit => [visit.id, visit]));
+            const wanted = new Map(this.spots.map(spot => [spotKey(spot.latitude, spot.longitude), spot]));
 
             const toRemove = [];
-            visitMarkers.clear();
+            let countsChanged = false;
+            spotMarkers.clear();
             for (const marker of this.markerLayer.getLayers()) {
-                if (wanted.has(marker.visitId) && !visitMarkers.has(marker.visitId)) {
-                    visitMarkers.set(marker.visitId, marker);
+                if (wanted.has(marker.spotKey) && !spotMarkers.has(marker.spotKey)) {
+                    const spot = wanted.get(marker.spotKey);
+                    // Refresh in place if the aggregate changed (e.g. filters changed)
+                    if (marker.spotCount !== spot.visit_count) {
+                        marker.spotCount = spot.visit_count;
+                        marker.setIcon(this.spotIcon(spot, this.isSelectedSpot(spot)));
+                        marker.setPopupContent(this.spotPopup(spot));
+                        countsChanged = true;
+                    }
+                    marker.spot = spot;
+                    spotMarkers.set(marker.spotKey, marker);
                 } else {
                     // Unwanted, or a duplicate of one already kept
                     toRemove.push(marker);
@@ -395,10 +438,10 @@ function placeTraceApp() {
             }
 
             const toAdd = [];
-            for (const [id, visit] of wanted) {
-                if (!visitMarkers.has(id)) {
-                    const marker = this.createVisitMarker(visit);
-                    visitMarkers.set(id, marker);
+            for (const [key, spot] of wanted) {
+                if (!spotMarkers.has(key)) {
+                    const marker = this.createSpotMarker(spot);
+                    spotMarkers.set(key, marker);
                     toAdd.push(marker);
                 }
             }
@@ -410,26 +453,60 @@ function placeTraceApp() {
             if (toAdd.length > 0) {
                 this.markerLayer.addLayers(toAdd);
             }
+            if (countsChanged) {
+                this.markerLayer.refreshClusters();
+            }
         },
-        
-        // Fit map bounds to show all visits
-        fitMapToVisits() {
-            if (this.visits.length === 0) return;
-            
+
+        // Fit map bounds to show all spots
+        fitMapToSpots() {
+            if (this.spots.length === 0) return;
+
             // Only fit bounds when we have filters active
             // (Don't fit when using bbox - that would cause infinite loop)
             const hasFilters = this.filterManager.tripId || this.filterManager.spatial.lat !== null || this.filterManager.temporal.start;
             if (!hasFilters) return;
-            
+
             const bounds = L.latLngBounds(
-                this.visits.map(v => [v.latitude, v.longitude])
+                this.spots.map(s => [s.latitude, s.longitude])
             );
-            
+
             // Disable animation to avoid popup animation conflicts
-            this.map.fitBounds(bounds, { 
+            this.map.fitBounds(bounds, {
                 padding: [50, 50],
                 animate: false
             });
+        },
+
+        // Client-side aggregation of visit rows into spots (used in tracks mode)
+        aggregateSpots(visits) {
+            const byKey = new Map();
+            for (const visit of visits) {
+                const key = spotKey(visit.latitude, visit.longitude);
+                let spot = byKey.get(key);
+                if (!spot) {
+                    spot = {
+                        latitude: visit.latitude,
+                        longitude: visit.longitude,
+                        visit_count: 0,
+                        total_minutes: 0,
+                        last_local_date: visit.local_start_date,
+                        location_name: visit.location_name,
+                    };
+                    byKey.set(key, spot);
+                }
+                spot.visit_count += 1;
+                spot.total_minutes += visit.duration_minutes || 0;
+                if (visit.local_start_date > spot.last_local_date) {
+                    spot.last_local_date = visit.local_start_date;
+                }
+            }
+            return [...byKey.values()];
+        },
+
+        // Total visits represented by the spots on the map
+        get totalVisitsShown() {
+            return this.spots.reduce((sum, spot) => sum + spot.visit_count, 0);
         },
         
         // Get trips for active tab
@@ -545,7 +622,7 @@ function placeTraceApp() {
                 weight: 2
             }).addTo(this.map);
 
-            // Note: Caller is responsible for calling loadRecentVisits()
+            // Note: Caller is responsible for calling loadSpots()
         },
         
         // Clear spatial filter
@@ -564,7 +641,7 @@ function placeTraceApp() {
             }
             
             // Reload visits without spatial filter
-            this.loadRecentVisits();
+            this.loadSpots();
         },
         
         // Update radius circle when slider changes
@@ -603,7 +680,7 @@ function placeTraceApp() {
                     
                     // Reload without the filter
                     this.loadTrips();
-                    this.loadRecentVisits();
+                    this.loadSpots();
                 }
             } else {
                 // Enabling - apply filter immediately if valid dates exist
@@ -641,7 +718,7 @@ function placeTraceApp() {
             
             // Only reload if spatial filter is already active
             if (this.filterManager.spatial.lat !== null) {
-                this.loadRecentVisits();
+                this.loadSpots();
             }
         },
         
@@ -686,7 +763,7 @@ function placeTraceApp() {
 
             // Reload trips and visits with date filter
             this.loadTrips();
-            this.loadRecentVisits();
+            this.loadSpots();
             
             // Reload table if visible
             if (this.showVisitTable) {
@@ -724,7 +801,7 @@ function placeTraceApp() {
             this.loadTrips();
             
             // Reload visits without date filter
-            this.loadRecentVisits();
+            this.loadSpots();
         },
         
         // Format date range for trip display
@@ -792,27 +869,6 @@ function placeTraceApp() {
             return `${datePart} • ${timePart}`;
         },
         
-        formatLocalDate(date, time) {
-            // Format just the date part
-            if (!date || !time) return '';
-            const dateObj = new Date(date + 'T' + time);
-            return dateObj.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        },
-        
-        formatLocalTime(date, time) {
-            // Format just the time part
-            if (!date || !time) return '';
-            const dateObj = new Date(date + 'T' + time);
-            return dateObj.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit'
-            });
-        },
-        
         // Load movements for selected day
         async loadMovements() {
             if (!this.selectedDay || !this.showMovement) {
@@ -823,9 +879,9 @@ function placeTraceApp() {
             this.loading = true;
             
             try {
-                // Save current visits before first load (if showing only this day)
-                if (!this.showAllNearbyVisits && !this.savedVisitState) {
-                    this.savedVisitState = [...this.visits];
+                // Save current spots before first load (if showing only this day)
+                if (!this.showAllNearbyVisits && !this.savedSpotState) {
+                    this.savedSpotState = [...this.spots];
                 }
                 
                 // Fetch movements and visits for the selected day
@@ -845,7 +901,7 @@ function placeTraceApp() {
                 
                 // If NOT showing all nearby, update main markers to show only this day
                 if (!this.showAllNearbyVisits) {
-                    this.visits = dayVisits;
+                    this.spots = this.aggregateSpots(dayVisits);
                     this.renderMarkers();
                 }
                 
@@ -1045,9 +1101,9 @@ function placeTraceApp() {
         async toggleMovement() {
             if (this.showMovement) {
                 // Turning ON tracks
-                // If a visit is selected but no day is set, use the visit's date
-                if (this.selectedVisit && !this.selectedDay) {
-                    this.selectedDay = this.selectedVisit.local_start_date;
+                // If a spot is selected but no day is set, use its last visit date
+                if (this.selectedSpot && !this.selectedDay) {
+                    this.selectedDay = this.selectedSpot.last_local_date;
                 }
                 
                 // Load movements if we have a day
@@ -1058,11 +1114,11 @@ function placeTraceApp() {
                 // Turning OFF tracks
                 this.clearMovementLayer();
                 
-                // Only reload visits if we had actually loaded movement data
-                // (savedVisitState being set indicates we changed the visit state)
-                if (this.savedVisitState) {
-                    this.savedVisitState = null;
-                    await this.loadRecentVisits();
+                // Only reload spots if we had actually loaded movement data
+                // (savedSpotState being set indicates we changed the markers)
+                if (this.savedSpotState) {
+                    this.savedSpotState = null;
+                    await this.loadSpots();
                 }
             }
         },
@@ -1071,9 +1127,9 @@ function placeTraceApp() {
         async toggleShowAllNearbyVisits() {
             if (this.showAllNearbyVisits) {
                 // Enabling show all - only reload if we have movement data loaded
-                if (this.showMovement && this.selectedDay && this.savedVisitState) {
-                    this.savedVisitState = null;
-                    await this.loadRecentVisits();
+                if (this.showMovement && this.selectedDay && this.savedSpotState) {
+                    this.savedSpotState = null;
+                    await this.loadSpots();
                 }
             } else {
                 // Disabling show all - show only day visits
@@ -1102,9 +1158,9 @@ function placeTraceApp() {
             await this.loadMovements();
         },
         
-        // Clear selected visit
-        clearSelectedVisit() {
-            this.setSelectedVisit(null);
+        // Clear selected spot
+        clearSelectedSpot() {
+            this.setSelectedSpot(null);
         },
         
         // Apply a date-range filter, clearing any spatial filter
@@ -1132,7 +1188,7 @@ function placeTraceApp() {
             if (this.showTripsSection) {
                 await this.loadTrips();
             }
-            await this.loadRecentVisits();
+            await this.loadSpots();
         },
 
         // Compute [start, end] date strings for a ±days window around a date
@@ -1188,7 +1244,7 @@ function placeTraceApp() {
             this.setSpatialFilter(lat, lon);
             
             // Wait for visits to load before fitting bounds
-            await this.loadRecentVisits();
+            await this.loadSpots();
         },
         
         // Visit Table Functions
@@ -1259,9 +1315,10 @@ function placeTraceApp() {
             this.updateSortedVisitTableData();
         },
         
-        // Select visit from table
+        // Select a visit from the table: highlight its spot on the map
         selectVisitFromTable(visit) {
-            this.setSelectedVisit(visit);
+            const marker = spotMarkers.get(spotKey(visit.latitude, visit.longitude));
+            this.setSelectedSpot(marker ? marker.spot : null);
 
             const bounds = this.map.getBounds();
             const visitLatLng = L.latLng(visit.latitude, visit.longitude);
@@ -1298,22 +1355,12 @@ function placeTraceApp() {
             }
         },
         
-        // Scroll table to show selected visit
-        scrollTableToVisit(visitId) {
-            if (!this.showVisitTable) return;
-            
-            // Use setTimeout to ensure DOM is updated
-            setTimeout(() => {
-                const row = document.getElementById(`table-visit-${visitId}`);
-                if (row) {
-                    row.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                }
-            }, 100);
+        // True if this table row's visit is at the currently selected spot
+        isVisitAtSelectedSpot(visit) {
+            return this.selectedSpot !== null
+                && spotKey(visit.latitude, visit.longitude) === spotKey(this.selectedSpot.latitude, this.selectedSpot.longitude);
         },
-        
+
         // Format time as HH:MM:SS (rounded seconds)
         formatTime(localTime) {
             if (!localTime) return '-';

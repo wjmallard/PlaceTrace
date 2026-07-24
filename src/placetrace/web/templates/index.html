@@ -28,65 +28,65 @@
                 <h1 class="text-2xl font-bold text-gray-900">PlaceTrace</h1>
             </div>
             
-            <!-- Selected Visit Panel -->
+            <!-- Selected Spot Panel -->
             <div class="p-4 border-b border-gray-200 bg-green-50">
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-xs font-semibold text-gray-700 uppercase">Selected Visit</h3>
-                    <button x-show="selectedVisit" @click="clearSelectedVisit()" class="text-xs text-gray-600 hover:text-gray-800">Clear</button>
+                    <h3 class="text-xs font-semibold text-gray-700 uppercase">Selected Spot</h3>
+                    <button x-show="selectedSpot" @click="clearSelectedSpot()" class="text-xs text-gray-600 hover:text-gray-800">Clear</button>
                 </div>
-                
-                <!-- Visit details when selected -->
-                <template x-if="selectedVisit">
+
+                <!-- Spot details when selected -->
+                <template x-if="selectedSpot">
                     <div>
-                        <div class="font-semibold text-sm text-gray-900 mb-1" x-text="selectedVisit.location_name"></div>
+                        <div class="font-semibold text-sm text-gray-900 mb-1" x-text="selectedSpot.location_name"></div>
                         <div class="text-xs text-gray-600 mb-1">
-                            <span x-text="formatLocalDate(selectedVisit.local_start_date, selectedVisit.local_start_time)"></span>
+                            <span x-text="selectedSpot.visit_count === 1 ? '1 visit' : `${selectedSpot.visit_count} visits`"></span>
                             <span class="text-gray-400 mx-1">•</span>
-                            <span x-text="formatLocalTime(selectedVisit.local_start_date, selectedVisit.local_start_time)"></span>
+                            <span x-text="formatDuration(selectedSpot.total_minutes)"></span>
                             <span class="text-gray-400 mx-1">•</span>
-                            <span x-text="`${selectedVisit.duration_minutes} min`"></span>
+                            <span x-text="`last ${selectedSpot.last_local_date}`"></span>
                         </div>
                         <div class="text-xs text-gray-500 mb-3">
-                            <span x-text="selectedVisit.latitude.toFixed(5)"></span>, 
-                            <span x-text="selectedVisit.longitude.toFixed(5)"></span>
+                            <span x-text="selectedSpot.latitude.toFixed(5)"></span>,
+                            <span x-text="selectedSpot.longitude.toFixed(5)"></span>
                             <span class="text-gray-400 mx-1">•</span>
-                            <span class="font-mono text-gray-400" x-text="encodeGeohash(selectedVisit.latitude, selectedVisit.longitude, 10)"></span>
+                            <span class="font-mono text-gray-400" x-text="encodeGeohash(selectedSpot.latitude, selectedSpot.longitude, 10)"></span>
                         </div>
-                        
+
                         <!-- Time Filters -->
                         <div class="mb-2 text-xs">
                             <span class="font-medium text-gray-700">Time:</span>
-                            <a href="#" @click.prevent="viewDay(selectedVisit.local_start_date)" class="text-blue-600 hover:underline ml-1">Day</a>
+                            <a href="#" @click.prevent="viewDay(selectedSpot.last_local_date)" class="text-blue-600 hover:underline ml-1">Day</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="view3Day(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">3 Day</a>
+                            <a href="#" @click.prevent="view3Day(selectedSpot.last_local_date)" class="text-blue-600 hover:underline">3 Day</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewWeek(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Week</a>
+                            <a href="#" @click.prevent="viewWeek(selectedSpot.last_local_date)" class="text-blue-600 hover:underline">Week</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewMonth(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Month</a>
+                            <a href="#" @click.prevent="viewMonth(selectedSpot.last_local_date)" class="text-blue-600 hover:underline">Month</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewYear(selectedVisit.local_start_date)" class="text-blue-600 hover:underline">Year</a>
+                            <a href="#" @click.prevent="viewYear(selectedSpot.last_local_date)" class="text-blue-600 hover:underline">Year</a>
                         </div>
-                        
+
                         <!-- Space Filters -->
                         <div class="text-xs">
                             <span class="font-medium text-gray-700">Space:</span>
-                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 2)" class="text-blue-600 hover:underline ml-1">2km</a>
+                            <a href="#" @click.prevent="viewSpace(selectedSpot.latitude, selectedSpot.longitude, 2)" class="text-blue-600 hover:underline ml-1">2km</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 5)" class="text-blue-600 hover:underline">5km</a>
+                            <a href="#" @click.prevent="viewSpace(selectedSpot.latitude, selectedSpot.longitude, 5)" class="text-blue-600 hover:underline">5km</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 10)" class="text-blue-600 hover:underline">10km</a>
+                            <a href="#" @click.prevent="viewSpace(selectedSpot.latitude, selectedSpot.longitude, 10)" class="text-blue-600 hover:underline">10km</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 20)" class="text-blue-600 hover:underline">20km</a>
+                            <a href="#" @click.prevent="viewSpace(selectedSpot.latitude, selectedSpot.longitude, 20)" class="text-blue-600 hover:underline">20km</a>
                             <span class="text-gray-400 mx-1">•</span>
-                            <a href="#" @click.prevent="viewSpace(selectedVisit.latitude, selectedVisit.longitude, 50)" class="text-blue-600 hover:underline">50km</a>
+                            <a href="#" @click.prevent="viewSpace(selectedSpot.latitude, selectedSpot.longitude, 50)" class="text-blue-600 hover:underline">50km</a>
                         </div>
                     </div>
                 </template>
-                
-                <!-- Placeholder when no visit selected -->
-                <template x-if="!selectedVisit">
+
+                <!-- Placeholder when no spot selected -->
+                <template x-if="!selectedSpot">
                     <div class="text-xs text-gray-500 italic">
-                        Click a visit on the map to view details
+                        Click a spot on the map to view details
                     </div>
                 </template>
             </div>
@@ -99,7 +99,7 @@
                             class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm border border-gray-300 hover:bg-gray-300"
                             x-text="showVisitTable ? 'Hide Table' : 'Show Table'">
                     </button>
-                    <button @click="clearAllFilters(); loadRecentVisits();" 
+                    <button @click="clearAllFilters(); loadSpots();"
                             :disabled="!filterManager.tripId && !filterManager.spatial.lat && !filterManager.temporal.start"
                             class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded text-sm border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300">
                         Clear Filters
@@ -334,7 +334,9 @@
             <div class="p-4 border-t border-gray-200 bg-white">
                 <div class="text-sm text-gray-600">
                     <div x-show="!loading">
-                        <span class="font-semibold" x-text="visits.length"></span> visits shown
+                        <span class="font-semibold" x-text="spots.length"></span> spots
+                        <span class="text-gray-400">·</span>
+                        <span class="font-semibold" x-text="totalVisitsShown.toLocaleString()"></span> visits shown
                     </div>
                     <div x-show="loading" class="text-blue-600">
                         Loading...
@@ -408,9 +410,9 @@
                     <tbody>
                         <template x-for="visit in visitTableSortedData" :key="visit.id">
                             <tr :id="'table-visit-' + visit.id"
-                                @click="selectVisitFromTable(visit)" 
+                                @click="selectVisitFromTable(visit)"
                                 class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
-                                :class="selectedVisit?.id === visit.id ? 'bg-blue-100' : ''">
+                                :class="isVisitAtSelectedSpot(visit) ? 'bg-blue-100' : ''">
                                 <td class="px-2 py-2 text-center" x-text="getVisitDirection(visit)"></td>
                                 <td class="px-3 py-2" x-text="visit.location_name"></td>
                                 <td class="px-3 py-2 text-xs font-mono" x-text="encodeGeohash(visit.latitude, visit.longitude, 10)"></td>
