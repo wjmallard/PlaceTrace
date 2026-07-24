@@ -15,7 +15,7 @@ Requirements:
 import argparse
 import traceback
 from collections import Counter
-from datetime import timedelta
+from datetime import date, timedelta
 from tqdm import tqdm
 import sys
 
@@ -28,15 +28,16 @@ HOME_RADIUS_KM = 20  # Within this distance of home counts as "at home"
 WORK_RADIUS_KM = 1   # Within this distance of work counts as "at work"
 
 
-def get_place_at_date(places, date):
+def get_place_at_date(places, day):
     """
     Get the home/work location active on a specific date.
+    When ranges overlap (e.g. a moving day), the latest-starting entry wins.
     Returns the location dict or None if none is defined for that date.
     """
-    for place in places:
-        if covers(place, date):
-            return place
-    return None
+    covering = [place for place in places if covers(place, day)]
+    if not covering:
+        return None
+    return max(covering, key=lambda place: place['start_date'] or date.min)
 
 
 def fetch_all_visits(conn):
