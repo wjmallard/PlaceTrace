@@ -109,7 +109,7 @@ def get_existing_visits(conn):
 def import_visits(conn, json_path):
     """
     Import visits from Google Timeline JSON with streaming insertion.
-    Uses savepoints for per-insert isolation and Ctrl-C safety.
+    Commits in batches so Ctrl-C loses at most the current batch.
     """
     print(f"Loading location history from: {json_path}")
     
@@ -137,7 +137,7 @@ def import_visits(conn, json_path):
     imported = 0
     skipped = 0
     
-    print("\nImporting visits (streaming with savepoints)...")
+    print("\nImporting visits (streaming)...")
     
     try:
         for obj in tqdm(visits, desc="Importing"):
@@ -179,39 +179,8 @@ def import_visits(conn, json_path):
             place_id = top_candidate.get('placeID')
             semantic_type = top_candidate.get('semanticType')
             
-            # Insert visit with savepoint for isolation
-            try:
-                cursor.execute("SAVEPOINT insert_visit")
-                
-                cursor.execute("""
-                    INSERT INTO Visits (
-                        start_time,
-                        end_time,
-                        duration_minutes,
-                        local_start_date,
-                        local_start_time,
-                        local_end_date,
-                        local_end_time,
-                        location,
-                        location_id,
-                        visit_type,
-                        semantic_type,
-                        place_id
-                    ) VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                        NULL,
-                        'timeline',
-                        %s,
-                        %s
-                    )
-                """, (
+            cursor.execute("""
+                INSERT INTO Visits (
                     start_time,
                     end_time,
                     duration_minutes,
@@ -219,29 +188,44 @@ def import_visits(conn, json_path):
                     local_start_time,
                     local_end_date,
                     local_end_time,
-                    lon, lat,  # PostGIS uses lon, lat order
+                    location,
+                    location_id,
+                    visit_type,
                     semantic_type,
                     place_id
-                ))
-                
-                cursor.execute("RELEASE SAVEPOINT insert_visit")
-                imported += 1
-                
-                # Commit every 100 visits
-                if imported % 100 == 0:
-                    conn.commit()
-                    
-            except Exception as e:
-                # Handle duplicate (unlikely but possible)
-                if 'duplicate key' in str(e) or 'UniqueViolation' in str(type(e)):
-                    cursor.execute("ROLLBACK TO SAVEPOINT insert_visit")
-                    cursor.execute("RELEASE SAVEPOINT insert_visit")
-                    skipped += 1
-                    continue
-                else:
-                    # Re-raise unexpected errors
-                    raise
-    
+                ) VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    NULL,
+                    'timeline',
+                    %s,
+                    %s
+                )
+            """, (
+                start_time,
+                end_time,
+                duration_minutes,
+                local_start_date,
+                local_start_time,
+                local_end_date,
+                local_end_time,
+                lon, lat,  # PostGIS uses lon, lat order
+                semantic_type,
+                place_id
+            ))
+            imported += 1
+
+            # Commit every 100 visits
+            if imported % 100 == 0:
+                conn.commit()
+
+
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrupted by user (Ctrl-C)")
         print("Committing current batch...")
