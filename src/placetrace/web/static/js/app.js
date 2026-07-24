@@ -148,6 +148,7 @@ function placeTraceApp() {
         showVisitTable: false,
         visitTableData: [],
         visitTableSortedData: [],  // Cached sorted data
+        visitTableDisplayLimit: 1000,  // Rows materialized in the DOM at once
         visitTableSort: {
             column: 'local_start_date',
             ascending: false  // Default: most recent first
@@ -1262,12 +1263,15 @@ function placeTraceApp() {
                 // Build params - never include bbox for table (we want ALL filtered visits)
                 const params = this.filterManager.buildParams({ includeBbox: false });
 
-                // If no filters active, we need to use bbox to avoid loading everything
+                // If no filters active, scope the table to the current viewport
                 if (this.isViewportLimited()) {
                     const bounds = this.map.getBounds();
                     const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
                     params.append('bbox', bbox);
                 }
+
+                // Fetch every matching visit; the DOM renders incrementally instead
+                params.set('limit', '50000');
 
                 const response = await fetch(`/api/visits?${params}`);
                 const data = await response.json();
@@ -1300,6 +1304,19 @@ function placeTraceApp() {
             });
             
             this.visitTableSortedData = data;
+        },
+
+        // Rows actually materialized in the DOM (sorting still covers everything)
+        get displayedVisitTableRows() {
+            return this.visitTableSortedData.slice(0, this.visitTableDisplayLimit);
+        },
+
+        showMoreVisitRows() {
+            this.visitTableDisplayLimit += 1000;
+        },
+
+        showAllVisitRows() {
+            this.visitTableDisplayLimit = this.visitTableSortedData.length;
         },
         
         // Sort visit table

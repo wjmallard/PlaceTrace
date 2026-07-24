@@ -367,7 +367,7 @@
                 <div class="flex items-center gap-2">
                     <h3 class="text-sm font-semibold text-gray-700">
                         Visit Table
-                        <span class="text-gray-500 font-normal" x-text="'(' + visitTableData.length + ' visits)'"></span>
+                        <span class="text-gray-500 font-normal" x-text="'(' + visitTableData.length.toLocaleString() + ' visits)'"></span>
                     </h3>
                     <span x-show="isViewportLimited()" class="text-xs text-amber-600">
                         ⚠️ Viewport only
@@ -408,7 +408,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="visit in visitTableSortedData" :key="visit.id">
+                        <template x-for="visit in displayedVisitTableRows" :key="visit.id">
                             <tr :id="'table-visit-' + visit.id"
                                 @click="selectVisitFromTable(visit)"
                                 class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
@@ -424,8 +424,23 @@
                         </template>
                     </tbody>
                 </table>
+
+                <!-- Incremental rendering controls for large lists -->
+                <div x-show="visitTableDisplayLimit < visitTableSortedData.length"
+                     class="p-3 text-center text-xs text-gray-600 border-t border-gray-200 bg-gray-50">
+                    Showing first <span class="font-semibold" x-text="visitTableDisplayLimit.toLocaleString()"></span>
+                    of <span class="font-semibold" x-text="visitTableSortedData.length.toLocaleString()"></span> rows
+                    <button @click="showMoreVisitRows()"
+                            class="ml-2 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">
+                        Show 1,000 more
+                    </button>
+                    <button @click="showAllVisitRows()"
+                            class="ml-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100">
+                        Show all
+                    </button>
+                </div>
             </div>
-            
+
         </div>
     </div>
     
