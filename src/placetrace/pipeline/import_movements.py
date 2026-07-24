@@ -14,6 +14,7 @@ All movements stored in Movements table with:
 
 import argparse
 import traceback
+from bisect import bisect_left
 
 import orjson
 from datetime import timedelta
@@ -23,6 +24,7 @@ import sys
 from placetrace.db import get_main_connection
 from placetrace.config import LOCATION_HISTORY_JSON
 from placetrace.pipeline.parse import (
+    explicit_offset,
     local_date_time,
     parse_geo_point,
     parse_latlng_e7,
@@ -164,14 +166,19 @@ def parse_movements_from_json(json_file_path):
     activity_count = 0
     breadcrumb_count = 0
     
+    # Breadcrumb trail timestamps are bare UTC; visits and activities carry
+    # real offsets, so each trail borrows the offset of the entry nearest
+    # to it in time (file order is not reliably chronological)
+    offsets = collect_offsets(timeline_objects)
+
     for obj in timeline_objects:
         # Skip visits (handled by other import script)
         if 'visit' in obj:
             continue
-        
+
         # Parse standalone timelinePath breadcrumb trails
         if 'timelinePath' in obj and 'activity' not in obj and 'activitySegment' not in obj:
-            movement = parse_breadcrumb_trail(obj)
+            movement = parse_breadcrumb_trail(obj, offsets)
             if movement:
                 breadcrumb_count += 1
                 yield movement
@@ -265,10 +272,45 @@ def parse_activity(obj, key):
     }
 
 
-def parse_breadcrumb_trail(obj):
+def collect_offsets(timeline_objects):
+    """
+    (utc_time, timezone) for every entry carrying an explicit UTC offset,
+    sorted by time. These reveal the local timezone at each moment.
+    """
+    offsets = []
+    for obj in timeline_objects:
+        ts = obj.get('startTime')
+        if not ts:
+            continue
+        tz = explicit_offset(ts)
+        if tz is not None:
+            offsets.append((parse_timestamp(ts), tz))
+
+    offsets.sort(key=lambda pair: pair[0])
+
+    return offsets
+
+
+def offset_near(offsets, when):
+    """The offset of the entry temporally nearest to the given moment."""
+    if not offsets:
+        return None
+
+    i = bisect_left(offsets, when, key=lambda pair: pair[0])
+    candidates = [c for c in (i - 1, i) if 0 <= c < len(offsets)]
+    nearest = min(candidates, key=lambda c: abs((offsets[c][0] - when).total_seconds()))
+
+    return offsets[nearest][1]
+
+
+def parse_breadcrumb_trail(obj, offsets=None):
     """
     Parse standalone timelinePath breadcrumb trail.
-    
+
+    Trail timestamps are bare UTC ('Z'), unlike visits and activities, so
+    local wall-clock fields use the offset of the temporally nearest
+    offset-carrying entry, when one is available.
+
     Structure:
     {
         "startTime": "...",
@@ -286,9 +328,16 @@ def parse_breadcrumb_trail(obj):
         end_time = parse_timestamp(end_time_str)
     except (KeyError, ValueError):
         return None
-    
+
     # Extract local date/time from both start and end timestamps
-    local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
+    borrowed = offset_near(offsets, start_time) if offsets and start_time_str.endswith('Z') else None
+    if borrowed is not None:
+        local_start = start_time.astimezone(borrowed)
+        local_end = end_time.astimezone(borrowed)
+        local_start_date, local_start_time = local_start.date(), local_start.time()
+        local_end_date, local_end_time = local_end.date(), local_end.time()
+    else:
+        local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
     
     duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
     

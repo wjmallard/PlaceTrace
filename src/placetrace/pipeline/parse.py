@@ -19,6 +19,19 @@ def local_date_time(timestamp_str):
     return dt.date(), dt.time()
 
 
+def explicit_offset(timestamp_str):
+    """
+    The timestamp's UTC offset as a timezone object, or None when the
+    timestamp is bare UTC ('Z' suffix) and the real local zone is unknown.
+    """
+    if timestamp_str.endswith('Z'):
+        return None
+    dt = datetime.fromisoformat(timestamp_str)
+    if dt.tzinfo is None:
+        return None
+    return timezone(dt.utcoffset())
+
+
 def parse_geo_point(geo_str):
     """Parse 'geo:lat,lon' to a (lat, lon) tuple, or None if malformed."""
     if not geo_str or not geo_str.startswith('geo:'):
