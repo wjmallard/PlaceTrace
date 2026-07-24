@@ -256,32 +256,8 @@ function placeTraceApp() {
         
         // Load visits for selected trip
         async loadTripVisits(tripId) {
-            this.loading = true;
-            
-            try {
-                // Set trip filter
-                this.filterManager.tripId = tripId;
-                
-                // Build params using filterManager (no bbox for trip queries)
-                const params = this.filterManager.buildParams({ includeBbox: false });
-                
-                const response = await fetch(`/api/visits?${params}`);
-                const data = await response.json();
-                
-                this.visits = data.visits;
-                this.renderMarkers();
-                this.fitMapToVisits();
-                
-                // Reload table if visible
-                if (this.showVisitTable) {
-                    await this.loadVisitTableData();
-                }
-                
-            } catch (error) {
-                console.error('Error loading trip visits:', error);
-            } finally {
-                this.loading = false;
-            }
+            this.filterManager.tripId = tripId;
+            await this.loadRecentVisits();
         },
         
         // Render visit markers on map
