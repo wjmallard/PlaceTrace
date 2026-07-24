@@ -150,7 +150,7 @@ CREATE TABLE Trips (
     local_end_time TIME,                -- Wall-clock time when trip ended (in ending location's timezone)
     
     -- Trip classification
-    trip_category TEXT NOT NULL,        -- 'day', 'short', 'long'
+    trip_category TEXT NOT NULL,        -- Config-defined category name, e.g. 'Day Trip'
     
     -- Location information
     cities TEXT[],                      -- ['Boston', 'Cambridge'] for multi-city

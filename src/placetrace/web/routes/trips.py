@@ -7,6 +7,7 @@ GET /api/trips/<id> - Get trip details with full visit list
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy import func
 from datetime import datetime
+from placetrace.config import config
 from placetrace.web.models import Trip, Visit, trip_visits
 from placetrace.web.database import db
 
@@ -40,8 +41,8 @@ def get_trips():
         if limit < 1 or limit > 1000:
             return jsonify({'error': 'limit must be between 1 and 1000', 'status': 400}), 400
         
-        # Validate category if provided
-        valid_categories = ['day', 'short', 'long']
+        # Validate category if provided (categories are config-defined, e.g. 'Day Trip')
+        valid_categories = [c['name'] for c in config['trips']['categories']]
         if category and category not in valid_categories:
             return jsonify({'error': f'category must be one of: {", ".join(valid_categories)}', 'status': 400}), 400
         
