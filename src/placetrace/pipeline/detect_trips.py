@@ -61,25 +61,14 @@ def load_trip_config():
     return config['trips']
 
 
-def get_home_at_date(home_locations, date):
+def get_place_at_date(places, date):
     """
-    Get home location active on a specific date.
-    Returns home dict or None if no home defined for that date.
+    Get the home/work location active on a specific date.
+    Returns the location dict or None if none is defined for that date.
     """
-    for home in home_locations:
-        if home['start_date'] <= date <= home['end_date']:
-            return home
-    return None
-
-
-def get_work_at_date(work_locations, date):
-    """
-    Get work location active on a specific date.
-    Returns work dict or None if no work defined for that date.
-    """
-    for work in work_locations:
-        if work['start_date'] <= date <= work['end_date']:
-            return work
+    for place in places:
+        if place['start_date'] <= date <= place['end_date']:
+            return place
     return None
 
 
@@ -210,7 +199,7 @@ def absorb_orphan_visits(trips, trip_config):
 
 def is_home_visit(visit, home_locations):
     """Return True if visit is within HOME_RADIUS_KM of the home active on that date."""
-    home = get_home_at_date(home_locations, visit['start_time'].date())
+    home = get_place_at_date(home_locations, visit['start_time'].date())
 
     if not home:
         return False  # No home defined for this date
@@ -220,7 +209,7 @@ def is_home_visit(visit, home_locations):
 
 def is_work_visit(visit, work_locations):
     """Return True if visit is within WORK_RADIUS_KM of the work active on that date."""
-    work = get_work_at_date(work_locations, visit['start_time'].date())
+    work = get_place_at_date(work_locations, visit['start_time'].date())
 
     if not work:
         return False  # No work defined for this date
@@ -309,7 +298,7 @@ def should_split_trip(conn, prev_visit, current_visit, home_locations, trip_conf
 
         # Get home location for the time period
         trip_date = prev_visit['end_time'].date()
-        home = get_home_at_date(home_locations, trip_date)
+        home = get_place_at_date(home_locations, trip_date)
 
         if home:
             prev_dist = haversine_km(prev_visit['lat'], prev_visit['lon'], home['lat'], home['lon'])
@@ -420,7 +409,7 @@ def finalize_trip(trip_visits, home_locations, trip_config):
     centroid_lon = sum(v['lon'] for v in trip_visits) / len(trip_visits)
 
     # Calculate distance from home
-    home = get_home_at_date(home_locations, start_time.date())
+    home = get_place_at_date(home_locations, start_time.date())
 
     if home:
         distance_from_home = haversine_km(centroid_lat, centroid_lon, home['lat'], home['lon'])
