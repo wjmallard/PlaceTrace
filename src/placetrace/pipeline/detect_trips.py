@@ -26,6 +26,10 @@ import sys
 
 from placetrace.db import get_main_connection
 from placetrace.config import config, project_root
+from placetrace.geo import haversine_km
+
+HOME_RADIUS_KM = 20  # Within this distance of home counts as "at home"
+WORK_RADIUS_KM = 1   # Within this distance of work counts as "at work"
 
 
 def load_locations_json(filename):
@@ -204,64 +208,28 @@ def absorb_orphan_visits(trips, trip_config):
     return non_orphans
 
 
-def is_home_visit(conn, visit, home_locations):
-    """
-    Check if visit is at home using PostGIS distance calculation.
-    Returns True if within 20km of home active on that date.
-    """
-    visit_date = visit['start_time'].date()
-    home = get_home_at_date(home_locations, visit_date)
-    
+def is_home_visit(visit, home_locations):
+    """Return True if visit is within HOME_RADIUS_KM of the home active on that date."""
+    home = get_home_at_date(home_locations, visit['start_time'].date())
+
     if not home:
         return False  # No home defined for this date
-    
-    cursor = conn.cursor()
-    
-    # Calculate distance using PostGIS
-    cursor.execute("""
-        SELECT ST_Distance(
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-        ) / 1000 as distance_km
-    """, (visit['lon'], visit['lat'], home['lon'], home['lat']))
-    
-    result = cursor.fetchone()
-    cursor.close()
-    
-    distance_km = result['distance_km']
-    return distance_km <= 20  # 20km radius = home area
+
+    return haversine_km(visit['lat'], visit['lon'], home['lat'], home['lon']) <= HOME_RADIUS_KM
 
 
-def is_work_visit(conn, visit, work_locations):
-    """
-    Check if visit is at work using PostGIS distance calculation.
-    Returns True if within 1km of work active on that date.
-    """
-    visit_date = visit['start_time'].date()
-    work = get_work_at_date(work_locations, visit_date)
-    
+def is_work_visit(visit, work_locations):
+    """Return True if visit is within WORK_RADIUS_KM of the work active on that date."""
+    work = get_work_at_date(work_locations, visit['start_time'].date())
+
     if not work:
         return False  # No work defined for this date
-    
+
     # Check place_id first (exact match)
     if visit['place_id'] and visit['place_id'] == work['place_id']:
         return True
-    
-    cursor = conn.cursor()
-    
-    # Calculate distance using PostGIS
-    cursor.execute("""
-        SELECT ST_Distance(
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-            ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-        ) / 1000 as distance_km
-    """, (visit['lon'], visit['lat'], work['lon'], work['lat']))
-    
-    result = cursor.fetchone()
-    cursor.close()
-    
-    distance_km = result['distance_km']
-    return distance_km <= 1  # 1km radius = work area
+
+    return haversine_km(visit['lat'], visit['lon'], work['lat'], work['lon']) <= WORK_RADIUS_KM
 
 
 def get_activity_between_visits(conn, prev_visit_end, current_visit_start):
@@ -338,48 +306,19 @@ def should_split_trip(conn, prev_visit, current_visit, home_locations, trip_conf
     if gap_hours < extended_gap_hours:
         # Medium gap (8-24h) - check if both visits are far from home
         # If both are far from home, this is likely the same trip (sleeping, long travel, etc.)
-        
+
         # Get home location for the time period
         trip_date = prev_visit['end_time'].date()
         home = get_home_at_date(home_locations, trip_date)
-        
+
         if home:
-            cursor = conn.cursor()
-            
-            # Calculate distance from home for both visits
-            cursor.execute("""
-                SELECT 
-                    ST_Distance(
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                        prev_loc.location
-                    ) / 1000 as prev_dist,
-                    ST_Distance(
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                        curr_loc.location
-                    ) / 1000 as curr_dist
-                FROM 
-                    Visits prev_loc,
-                    Visits curr_loc
-                WHERE 
-                    prev_loc.id = %s AND
-                    curr_loc.id = %s
-            """, (
-                home['lon'], home['lat'],
-                home['lon'], home['lat'],
-                prev_visit['id'],
-                current_visit['id']
-            ))
-            
-            result = cursor.fetchone()
-            cursor.close()
-            
-            prev_dist = result['prev_dist']
-            curr_dist = result['curr_dist']
-            
+            prev_dist = haversine_km(prev_visit['lat'], prev_visit['lon'], home['lat'], home['lon'])
+            curr_dist = haversine_km(current_visit['lat'], current_visit['lon'], home['lat'], home['lon'])
+
             # If both visits are far from home, continue the trip despite the gap
             if prev_dist >= extended_gap_min_distance and curr_dist >= extended_gap_min_distance:
                 return False
-    
+
     # Long gap or gap near home - split trip
     return True
 
@@ -410,8 +349,8 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     
     for visit in tqdm(visits, desc="Analyzing visits"):
         # Check if at home or work
-        at_home = is_home_visit(conn, visit, home_locations)
-        at_work = is_work_visit(conn, visit, work_locations)
+        at_home = is_home_visit(visit, home_locations)
+        at_work = is_work_visit(visit, work_locations)
         
         # Check if gap should split trip (uses activity data)
         if last_visit_end and current_trip_visits:
@@ -428,14 +367,14 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
         if at_home or at_work:
             # Back home/at work - finalize current trip if exists
             if current_trip_visits:
-                trip = finalize_trip(conn, current_trip_visits, home_locations, trip_config)
+                trip = finalize_trip(current_trip_visits, home_locations, trip_config)
                 if trip:  # Only add if meets distance criteria
                     trips.append(trip)
                 current_trip_visits = []
         elif should_split:
             # Gap should split trip - finalize current and start new one
             if current_trip_visits:
-                trip = finalize_trip(conn, current_trip_visits, home_locations, trip_config)
+                trip = finalize_trip(current_trip_visits, home_locations, trip_config)
                 if trip:
                     trips.append(trip)
             current_trip_visits = [visit]
@@ -447,7 +386,7 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     
     # Finalize last trip if exists
     if current_trip_visits:
-        trip = finalize_trip(conn, current_trip_visits, home_locations, trip_config)
+        trip = finalize_trip(current_trip_visits, home_locations, trip_config)
         if trip:
             trips.append(trip)
     
@@ -461,56 +400,34 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     return trips
 
 
-def finalize_trip(conn, trip_visits, home_locations, trip_config):
+def finalize_trip(trip_visits, home_locations, trip_config):
     """
     Finalize a trip by calculating stats and checking criteria.
     Returns trip dict or None if doesn't meet criteria.
     """
     if not trip_visits:
         return None
-    
+
     start_time = trip_visits[0]['start_time']
     end_time = trip_visits[-1]['end_time']
     duration_hours = (end_time - start_time).total_seconds() / 3600
-    
-    # Calculate centroid of trip using PostGIS
+
     visit_ids = [v['id'] for v in trip_visits]
     location_ids = [v['location_id'] for v in trip_visits if v['location_id']]
-    
-    cursor = conn.cursor()
-    
-    # Get trip centroid
-    cursor.execute("""
-        SELECT 
-            ST_Y(ST_Centroid(ST_Collect(location::geometry))) as centroid_lat,
-            ST_X(ST_Centroid(ST_Collect(location::geometry))) as centroid_lon
-        FROM Visits
-        WHERE id = ANY(%s)
-    """, (visit_ids,))
-    
-    centroid = cursor.fetchone()
-    
+
+    # Trip centroid (mean of visit coordinates, same as ST_Centroid over points)
+    centroid_lat = sum(v['lat'] for v in trip_visits) / len(trip_visits)
+    centroid_lon = sum(v['lon'] for v in trip_visits) / len(trip_visits)
+
     # Calculate distance from home
-    trip_date = start_time.date()
-    home = get_home_at_date(home_locations, trip_date)
-    
+    home = get_home_at_date(home_locations, start_time.date())
+
     if home:
-        cursor.execute("""
-            SELECT ST_Distance(
-                ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-            ) / 1000 as distance_km
-        """, (centroid['centroid_lon'], centroid['centroid_lat'], 
-              home['lon'], home['lat']))
-        
-        result = cursor.fetchone()
-        distance_from_home = result['distance_km']
+        distance_from_home = haversine_km(centroid_lat, centroid_lon, home['lat'], home['lon'])
     else:
         # No home defined - can't filter by distance
         distance_from_home = float('inf')
-    
-    cursor.close()
-    
+
     # Check minimum distance criteria
     min_distance_km = trip_config['detection']['min_distance_km']
     if distance_from_home < min_distance_km:
