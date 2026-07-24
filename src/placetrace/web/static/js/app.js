@@ -1269,26 +1269,21 @@ function placeTraceApp() {
         // Load visit table data
         async loadVisitTableData() {
             try {
-                console.log('Loading visit table data...');
                 // Build params - never include bbox for table (we want ALL filtered visits)
                 const params = this.filterManager.buildParams({ includeBbox: false });
-                
+
                 // If no filters active, we need to use bbox to avoid loading everything
                 if (this.isViewportLimited()) {
                     const bounds = this.map.getBounds();
                     const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
                     params.append('bbox', bbox);
-                    console.log('Using bbox for viewport-limited query');
                 }
-                
-                console.log('Query params:', params.toString());
+
                 const response = await fetch(`/api/visits?${params}`);
                 const data = await response.json();
-                
-                console.log('Received data:', data);
+
                 this.visitTableData = data.visits;
                 this.updateSortedVisitTableData();
-                console.log('visitTableData set to:', this.visitTableData.length, 'visits');
             } catch (error) {
                 console.error('Error loading visit table data:', error);
             }
@@ -1296,13 +1291,10 @@ function placeTraceApp() {
         
         // Update sorted data array
         updateSortedVisitTableData() {
-            console.log('updateSortedVisitTableData called, visitTableData.length:', this.visitTableData.length);
             const data = [...this.visitTableData];
             const column = this.visitTableSort.column;
             const ascending = this.visitTableSort.ascending;
-            
-            console.log('Sorting by:', column, 'ascending:', ascending);
-            
+
             data.sort((a, b) => {
                 let aVal = a[column];
                 let bVal = b[column];
@@ -1318,7 +1310,6 @@ function placeTraceApp() {
             });
             
             this.visitTableSortedData = data;
-            console.log('visitTableSortedData set to:', this.visitTableSortedData.length, 'visits');
         },
         
         // Sort visit table
