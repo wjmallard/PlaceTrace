@@ -119,26 +119,6 @@ def extract_route_geometry(activity):
     return f"LINESTRING({', '.join(coords)})"
 
 
-def extract_raw_path(activity):
-    """
-    Extract sparse GPS pings from simplifiedRawPath.
-    Returns JSONB-compatible dict or None.
-    """
-    raw_path = activity.get('simplifiedRawPath')
-    if not raw_path or 'points' not in raw_path:
-        return None
-    
-    return raw_path['points']
-
-
-def extract_parking_event(activity):
-    """
-    Extract parking event metadata if present.
-    Returns JSONB-compatible dict or None.
-    """
-    return activity.get('parkingEvent')
-
-
 def normalize_activity_type(activity_type):
     """
     Normalize activity type string to uppercase with underscores.
