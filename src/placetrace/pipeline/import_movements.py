@@ -200,13 +200,9 @@ def parse_movements_from_json(json_file_path):
             continue
         
         # Parse activity (old format) or activitySegment (new format)
-        if 'activity' in obj:
-            movement = parse_activity_old_format(obj)
-            if movement:
-                activity_count += 1
-                yield movement
-        elif 'activitySegment' in obj:
-            movement = parse_activity_new_format(obj)
+        if 'activity' in obj or 'activitySegment' in obj:
+            key = 'activity' if 'activity' in obj else 'activitySegment'
+            movement = parse_activity(obj, key)
             if movement:
                 activity_count += 1
                 yield movement
@@ -215,24 +211,17 @@ def parse_movements_from_json(json_file_path):
     print(f"✓ Parsed {breadcrumb_count:,} breadcrumb trails")
 
 
-def parse_activity_old_format(obj):
+def parse_activity(obj, key):
     """
-    Parse old format activity object (2014-2018).
-    
-    Structure:
-    {
-        "startTime": "...",
-        "endTime": "...",
-        "activity": {
-            "start": "geo:lat,lon",
-            "end": "geo:lat,lon",
-            "topCandidate": {"type": "walking", "probability": "0.5"},
-            "distanceMeters": "1234.5"
-        }
-    }
+    Parse an activity object into a movement dict.
+
+    Handles both formats:
+    - key='activity': old format (2014-2018), no route data
+    - key='activitySegment': new format (2019+), may include timelinePath,
+      simplifiedRawPath, editConfirmationStatus, parkingEvent
     """
-    activity = obj['activity']
-    
+    activity = obj[key]
+
     # Parse timestamps (at top level)
     try:
         start_time_str = obj['startTime']
@@ -241,103 +230,43 @@ def parse_activity_old_format(obj):
         end_time = parse_timestamp(end_time_str)
     except (KeyError, ValueError):
         return None
-    
+
     # Extract local date/time from both start and end timestamps
     local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
-    
+
     # Calculate duration (minimum 1 minute)
     duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
-    
+
     # Parse start/end locations
     start_location = parse_geo_point(activity.get('start'))
     end_location = parse_geo_point(activity.get('end'))
-    
+
     if not start_location or not end_location:
         return None
-    
+
     # Extract activity type and confidence
     top_candidate = activity.get('topCandidate', {})
     activity_type = normalize_activity_type(top_candidate.get('type', 'UNKNOWN'))
     confidence = float(top_candidate.get('probability', 0.0))
-    
-    # Extract distance
-    distance_meters = float(activity.get('distanceMeters', 0.0))
-    
-    # Build source metadata
-    source_metadata = {
-        'format': 'old_activity',
-        'top_candidate': top_candidate
-    }
-    
-    return {
-        'start_time': start_time,
-        'end_time': end_time,
-        'duration_minutes': duration_minutes,
-        'local_start_date': local_start_date,
-        'local_start_time': local_start_time,
-        'local_end_date': local_end_date,
-        'local_end_time': local_end_time,
-        'start_location': start_location,
-        'end_location': end_location,
-        'activity_type': activity_type,
-        'confidence': confidence,
-        'distance_meters': distance_meters,
-        'source': 'google_timeline',
-        'movement_type': 'activity',
-        'route_geometry': None,  # Old format doesn't have routes
-        'source_metadata': source_metadata
-    }
 
-
-def parse_activity_new_format(obj):
-    """
-    Parse new format activitySegment object (2019+).
-    
-    Structure similar to old format but may have additional fields like
-    timelinePath, simplifiedRawPath, editConfirmationStatus, parkingEvent.
-    """
-    activity = obj['activitySegment']
-    
-    # Parse timestamps
-    try:
-        start_time_str = obj['startTime']
-        end_time_str = obj['endTime']
-        start_time = parse_timestamp(start_time_str)
-        end_time = parse_timestamp(end_time_str)
-    except (KeyError, ValueError):
-        return None
-    
-    # Extract local date/time from both start and end timestamps
-    local_start_date, local_start_time, local_end_date, local_end_time = extract_start_end_local_times(start_time_str, end_time_str)
-    
-    duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
-    
-    # Parse locations
-    start_location = parse_geo_point(activity.get('start'))
-    end_location = parse_geo_point(activity.get('end'))
-    
-    if not start_location or not end_location:
-        return None
-    
-    # Extract activity type and confidence
-    top_candidate = activity.get('topCandidate', {})
-    activity_type = normalize_activity_type(top_candidate.get('type', 'UNKNOWN'))
-    confidence = float(top_candidate.get('probability', 0.0))
-    
     distance_meters = float(activity.get('distanceMeters', 0.0))
-    
-    # Extract route geometry if available
-    route_geometry = extract_route_geometry(activity)
-    
-    # Build source metadata with new format fields
-    source_metadata = {
-        'format': 'new_activity_segment',
-        'top_candidate': top_candidate,
-        'edit_confirmation_status': activity.get('editConfirmationStatus'),
-        'parking_event': activity.get('parkingEvent'),
-        'has_simplified_raw_path': 'simplifiedRawPath' in activity
-    }
-    
+
+    if key == 'activity':
+        route_geometry = None  # Old format doesn't have routes
+        source_metadata = {
+            'format': 'old_activity',
+            'top_candidate': top_candidate,
+        }
+    else:
+        route_geometry = extract_route_geometry(activity)
+        source_metadata = {
+            'format': 'new_activity_segment',
+            'top_candidate': top_candidate,
+            'edit_confirmation_status': activity.get('editConfirmationStatus'),
+            'parking_event': activity.get('parkingEvent'),
+            'has_simplified_raw_path': 'simplifiedRawPath' in activity,
+        }
+
     return {
         'start_time': start_time,
         'end_time': end_time,
