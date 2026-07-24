@@ -86,7 +86,7 @@ def fetch_all_visits(conn):
             visit_type,
             place_id
         FROM Visits
-        ORDER BY start_time
+        ORDER BY start_time, id
     """)
     
     visits = cursor.fetchall()
@@ -388,8 +388,11 @@ def finalize_trip(trip_visits, home_locations, trip_config):
     if not trip_visits:
         return None
 
+    # The trip ends when its latest-ending visit does; with tied or overlapping
+    # start times that is not necessarily the last visit in scan order
     start_time = trip_visits[0]['start_time']
-    end_time = trip_visits[-1]['end_time']
+    last_visit = max(trip_visits, key=lambda v: v['end_time'])
+    end_time = last_visit['end_time']
     duration_hours = (end_time - start_time).total_seconds() / 3600
 
     visit_ids = [v['id'] for v in trip_visits]
@@ -420,12 +423,12 @@ def finalize_trip(trip_visits, home_locations, trip_config):
     if trip_category is None:
         return None  # Too short to be a trip
     
-    # Local wall-clock bounds come from the first/last visit
+    # Local wall-clock bounds come from the first/latest-ending visit
     # (start_time/end_time are UTC, so their date/time parts are not local)
     local_start_date = trip_visits[0]['local_start_date']
     local_start_time = trip_visits[0]['local_start_time']
-    local_end_date = trip_visits[-1]['local_end_date']
-    local_end_time = trip_visits[-1]['local_end_time']
+    local_end_date = last_visit['local_end_date']
+    local_end_time = last_visit['local_end_time']
 
     return {
         'start_time': start_time,
