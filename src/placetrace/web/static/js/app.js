@@ -133,16 +133,8 @@ function placeTraceApp() {
         },
         
         // UI state for date inputs
-        dateRangeDraft: {
-            start: '',
-            end: ''
-        },
         startDate: '',
         endDate: '',
-        lastValidStartDate: '',
-        lastValidEndDate: '',
-        dateText: '',
-        endDateText: '',
         showRadiusSection: false,
         showDateFilter: false,
         expandedYears: {},
@@ -571,7 +563,6 @@ function placeTraceApp() {
             }
         },
         
-        // Parse date text input
         // Handle time filter enable/disable
         toggleTimeFilter() {
             if (!this.timeFilterEnabled) {
@@ -631,14 +622,10 @@ function placeTraceApp() {
             if (!this.startDate) {
                 return;
             }
-            
-            // Valid start date entered for first time or changed
-            this.lastValidStartDate = this.startDate;
-            
+
             // If end is empty or less than start, set end = start
             if (!this.endDate || this.endDate < this.startDate) {
                 this.endDate = this.startDate;
-                this.lastValidEndDate = this.endDate;
             }
             
             // Apply the filter
@@ -655,9 +642,7 @@ function placeTraceApp() {
             if (this.endDate < this.startDate) {
                 this.endDate = this.startDate;
             }
-            
-            this.lastValidEndDate = this.endDate;
-            
+
             // Apply the filter
             this.applyDateFilter();
         },
@@ -686,82 +671,6 @@ function placeTraceApp() {
             }
         },
         
-        parseDate() {
-            if (!this.dateText.trim()) return;
-            
-            const parsed = this.parseDateInput(this.dateText);
-            if (!parsed) {
-                alert('Format: YYYY, YYYY-MM, or YYYY-MM-DD');
-                this.dateText = '';
-                return;
-            }
-            
-            this.filterManager.temporal.start = parsed.start;
-            
-            // Always set end - either from endDateText or auto-expanded from dateText
-            if (!this.endDateText.trim()) {
-                this.filterManager.temporal.end = parsed.end;
-            }
-        },
-        
-        // Parse end date text input
-        parseEndDate() {
-            if (!this.endDateText.trim()) {
-                // Empty = today
-                this.filterManager.temporal.end = new Date().toISOString().split('T')[0];
-                return;
-            }
-            
-            const parsed = this.parseDateInput(this.endDateText, true);
-            if (!parsed) {
-                alert('Format: YYYY, YYYY-MM, or YYYY-MM-DD');
-                this.endDateText = '';
-                return;
-            }
-            
-            this.filterManager.temporal.end = parsed.end;
-        },
-        
-        // Parse date input (returns {start, end})
-        parseDateInput(text, isEndDate = false) {
-            const yearRegex = /^\d{4}$/;
-            const yearMonthRegex = /^\d{4}-\d{2}$/;
-            const fullDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-            
-            if (yearRegex.test(text)) {
-                // Year only: YYYY
-                const year = text;
-                return {
-                    start: `${year}-01-01`,
-                    end: `${year}-12-31`
-                };
-            } else if (yearMonthRegex.test(text)) {
-                // Year-Month: YYYY-MM
-                const [year, month] = text.split('-');
-                const lastDay = this.getLastDayOfMonth(text);
-                return {
-                    start: `${text}-01`,
-                    end: `${text}-${lastDay}`
-                };
-            } else if (fullDateRegex.test(text)) {
-                // Full date: YYYY-MM-DD
-                return {
-                    start: text,
-                    end: text
-                };
-            }
-            
-            return null; // Invalid format
-        },
-        
-        // Get last day of month
-        getLastDayOfMonth(yearMonth) {
-            const [year, month] = yearMonth.split('-').map(Number);
-            const lastDay = new Date(year, month, 0).getDate();
-            return String(lastDay).padStart(2, '0');
-        },
-        
-        
         // Quick preset: Past week
         setPastWeek() {
             const now = new Date();
@@ -770,12 +679,10 @@ function placeTraceApp() {
             this.timeFilterEnabled = true;
             this.startDate = past.toISOString().split('T')[0];
             this.endDate = now.toISOString().split('T')[0];
-            this.lastValidStartDate = this.startDate;
-            this.lastValidEndDate = this.endDate;
-            
+
             this.applyDateFilter();
         },
-        
+
         // Quick preset: Past month
         setPastMonth() {
             const now = new Date();
@@ -785,12 +692,10 @@ function placeTraceApp() {
             this.timeFilterEnabled = true;
             this.startDate = past.toISOString().split('T')[0];
             this.endDate = now.toISOString().split('T')[0];
-            this.lastValidStartDate = this.startDate;
-            this.lastValidEndDate = this.endDate;
-            
+
             this.applyDateFilter();
         },
-        
+
         // Quick preset: Past year
         setPastYear() {
             const now = new Date();
@@ -800,12 +705,10 @@ function placeTraceApp() {
             this.timeFilterEnabled = true;
             this.startDate = past.toISOString().split('T')[0];
             this.endDate = now.toISOString().split('T')[0];
-            this.lastValidStartDate = this.startDate;
-            this.lastValidEndDate = this.endDate;
-            
+
             this.applyDateFilter();
         },
-        
+
         // Format date range for chip display
         formatDateRangeChip() {
             if (!this.filterManager.temporal.start) return '';
@@ -834,12 +737,8 @@ function placeTraceApp() {
         clearDateFilter() {
             this.filterManager.clearTemporal();
             this.timeFilterEnabled = false; // Disable the toggle
-            this.dateText = '';
-            this.endDateText = '';
             this.startDate = '';
             this.endDate = '';
-            this.lastValidStartDate = '';
-            this.lastValidEndDate = '';
             
             // Reload trips without date filter
             this.loadTrips();
