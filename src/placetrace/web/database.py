@@ -1,14 +1,10 @@
 """
-Database initialization and per-request connection management
+Per-request database connection management
 """
 
 from flask import g
-from flask_sqlalchemy import SQLAlchemy
 
 from placetrace.db import get_main_connection
-
-# Legacy SQLAlchemy handle; removed once the last route is converted to psycopg
-db = SQLAlchemy()
 
 
 def get_db():
@@ -26,6 +22,5 @@ def close_db(exc=None):
 
 
 def init_db(app):
-    """Initialize database with Flask app"""
-    db.init_app(app)
+    """Register per-request connection teardown"""
     app.teardown_appcontext(close_db)
