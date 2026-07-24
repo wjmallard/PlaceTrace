@@ -11,11 +11,25 @@ import argparse
 from tqdm import tqdm
 import sys
 
-from placetrace.db import get_main_connection, geocode_point, get_or_create_location
+from placetrace.db import (
+    geocode_point,
+    get_main_connection,
+    get_or_create_location,
+    get_osm_connection,
+)
 from placetrace.config import NUM_WORKERS
 
 # For multiprocessing
 from multiprocessing import Pool
+
+# Per-worker OSM connection, opened once by init_worker and reused
+_worker_conn = None
+
+
+def init_worker():
+    """Open this worker process's OSM connection."""
+    global _worker_conn
+    _worker_conn = get_osm_connection()
 
 
 def worker_geocode(lat_lon):
@@ -25,7 +39,7 @@ def worker_geocode(lat_lon):
     Returns (lat, lon, location_info) tuple.
     """
     lat, lon = lat_lon
-    return (lat, lon, geocode_point(lat, lon))
+    return (lat, lon, geocode_point(lat, lon, conn=_worker_conn))
 
 
 def get_unique_coordinates(conn):
@@ -93,7 +107,7 @@ def geocode_and_update(conn, coord_to_visit_ids):
     failed_coords = 0
 
     try:
-        with Pool(NUM_WORKERS) as pool:
+        with Pool(NUM_WORKERS, initializer=init_worker) as pool:
             # imap_unordered yields results as workers complete (any order)
             # Main thread processes results sequentially
             for lat, lon, location_info in tqdm(

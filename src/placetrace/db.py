@@ -33,23 +33,26 @@ def get_main_connection():
 
 def get_osm_connection():
     """Create connection to OSM boundaries database - uses .pgpass"""
+    # Autocommit so long-lived read-only connections don't idle in transaction
     return psycopg.connect(
         dbname=OSM_DB,
         row_factory=dict_row,
+        autocommit=True,
     )
 
 # ============================================================================
 # Geocoding Functions
 # ============================================================================
 
-def geocode_point(lat, lon):
+def geocode_point(lat, lon, conn=None):
     """
     Reverse geocode coordinates to full OSM administrative hierarchy.
-    
+
     Args:
         lat: Latitude
         lon: Longitude
-    
+        conn: Open OSM connection to reuse; opens (and closes) one if omitted
+
     Returns:
         dict: {
             'city': str or None,           # admin_level 8
@@ -67,7 +70,9 @@ def geocode_point(lat, lon):
         }
         None: If no boundaries contain this point
     """
-    conn = get_osm_connection()
+    own_conn = conn is None
+    if own_conn:
+        conn = get_osm_connection()
 
     with conn.cursor() as cursor:
         cursor.execute("""
@@ -89,7 +94,8 @@ def geocode_point(lat, lon):
 
         results = cursor.fetchall()
 
-    conn.close()
+    if own_conn:
+        conn.close()
 
     if not results:
         return None
