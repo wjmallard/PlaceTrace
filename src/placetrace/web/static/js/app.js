@@ -1,4 +1,9 @@
 // PlaceTrace Alpine.js App
+
+// Visit id -> Leaflet marker. Kept outside the Alpine component so the
+// markers are not wrapped in reactive proxies.
+const visitMarkers = new Map();
+
 function placeTraceApp() {
     return {
         // State
@@ -167,10 +172,11 @@ function placeTraceApp() {
                 mapConfig.default_zoom
             );
 
-            // Add base map tiles
+            // Add base map tiles (keepBuffer retains extra off-screen tiles while panning)
             L.tileLayer(mapConfig.tiles.url, {
                 attribution: mapConfig.tiles.attribution,
-                maxZoom: 19
+                maxZoom: 19,
+                keepBuffer: 4
             }).addTo(this.map);
             
             // Create marker cluster group
@@ -283,82 +289,119 @@ function placeTraceApp() {
             await this.loadRecentVisits();
         },
         
-        // Render visit markers on map
-        renderMarkers() {
-            // Clear existing markers
-            this.markerLayer.clearLayers();
-            
-            // Add marker for each visit
-            this.visits.forEach(visit => {
-                // Check if this is the selected visit
-                const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
-                
-                // Selected visits are red, others are blue
-                const fillColor = isSelected ? '#DC2626' : '#3B82F6';  // darker red or blue
-                const borderColor = isSelected ? '#991B1B' : '#1E40AF';  // dark red or dark blue
+        // Build the circle icon for a visit marker
+        visitIcon(isSelected) {
+            const size = 12;
+            const fillColor = isSelected ? '#DC2626' : '#3B82F6';  // darker red or blue
+            const borderColor = isSelected ? '#991B1B' : '#1E40AF';  // dark red or dark blue
+            const borderWidth = isSelected ? 3 : 1;
 
-                const size = 12;
-                const borderWidth = isSelected ? 3 : 1;
+            const markerHtml = `
+                <div style="
+                    width: ${size}px;
+                    height: ${size}px;
+                    background-color: ${fillColor};
+                    border: ${borderWidth}px solid ${borderColor};
+                    border-radius: 50%;
+                    opacity: 0.9;
+                ">
+                </div>
+            `;
 
-                const markerHtml = `
-                    <div style="
-                        width: ${size}px;
-                        height: ${size}px;
-                        background-color: ${fillColor};
-                        border: ${borderWidth}px solid ${borderColor};
-                        border-radius: 50%;
-                        opacity: 0.9;
-                    ">
-                    </div>
-                `;
-                
-                const marker = L.marker(
-                    [visit.latitude, visit.longitude],
-                    {
-                        icon: L.divIcon({
-                            html: markerHtml,
-                            className: '',
-                            iconSize: [size, size],
-                            iconAnchor: [size/2, size/2]
-                        })
-                    }
-                );
-                
-                // Popup with visit info
-                const popupContent = `
-                    <div class="text-sm">
-                        <div class="font-semibold">${visit.location_name}</div>
-                        <div class="text-gray-600 mt-1">
-                            ${this.formatLocalDateTime(visit.local_start_date, visit.local_start_time)}
-                        </div>
-                        <div class="text-gray-600">
-                            ${visit.duration_minutes} minutes
-                        </div>
-                    </div>
-                `;
-                
-                marker.bindPopup(popupContent);
-                
-                // Click handler - select this visit and optionally set spatial filter
-                marker.on('click', (e) => {
-                    // If space filter is enabled, set spatial filter centered on this visit
-                    if (this.spaceFilterEnabled) {
-                        // Stop event propagation so map click handler doesn't fire
-                        L.DomEvent.stopPropagation(e);
-                        this.setSpatialFilter(visit.latitude, visit.longitude, false); // Don't show X, visit marker shows selection
-                        this.loadRecentVisits();
-                    }
-                    
-                    // Always select the visit and re-render markers
-                    this.selectedVisit = visit;
-                    this.renderMarkers();
-                    
-                    // Scroll table to show this visit
-                    this.scrollTableToVisit(visit.id);
-                });
-                
-                marker.addTo(this.markerLayer);
+            return L.divIcon({
+                html: markerHtml,
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
             });
+        },
+
+        // Create a marker (with popup and click handler) for a visit
+        createVisitMarker(visit) {
+            const isSelected = this.selectedVisit && this.selectedVisit.id === visit.id;
+            const marker = L.marker(
+                [visit.latitude, visit.longitude],
+                { icon: this.visitIcon(isSelected) }
+            );
+
+            // Popup with visit info
+            const popupContent = `
+                <div class="text-sm">
+                    <div class="font-semibold">${visit.location_name}</div>
+                    <div class="text-gray-600 mt-1">
+                        ${this.formatLocalDateTime(visit.local_start_date, visit.local_start_time)}
+                    </div>
+                    <div class="text-gray-600">
+                        ${visit.duration_minutes} minutes
+                    </div>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+
+            // Click handler - select this visit and optionally set spatial filter
+            marker.on('click', (e) => {
+                // If space filter is enabled, set spatial filter centered on this visit
+                if (this.spaceFilterEnabled) {
+                    // Stop event propagation so map click handler doesn't fire
+                    L.DomEvent.stopPropagation(e);
+                    this.setSpatialFilter(visit.latitude, visit.longitude, false); // Don't show X, visit marker shows selection
+                    this.loadRecentVisits();
+                }
+
+                this.setSelectedVisit(visit);
+
+                // Scroll table to show this visit
+                this.scrollTableToVisit(visit.id);
+            });
+
+            return marker;
+        },
+
+        // Select (or clear, with null) a visit, restyling only the affected markers
+        setSelectedVisit(visit) {
+            const prevId = this.selectedVisit ? this.selectedVisit.id : null;
+            this.selectedVisit = visit;
+
+            const prevMarker = prevId !== null ? visitMarkers.get(prevId) : null;
+            if (prevMarker) {
+                prevMarker.setIcon(this.visitIcon(false));
+            }
+
+            const newMarker = visit ? visitMarkers.get(visit.id) : null;
+            if (newMarker) {
+                newMarker.setIcon(this.visitIcon(true));
+            }
+        },
+
+        // Sync visit markers with this.visits, adding/removing only what changed
+        // (a refresh that returns the same visits does no DOM work at all)
+        renderMarkers() {
+            const wanted = new Map(this.visits.map(visit => [visit.id, visit]));
+
+            const toRemove = [];
+            for (const [id, marker] of visitMarkers) {
+                if (!wanted.has(id)) {
+                    toRemove.push(marker);
+                    visitMarkers.delete(id);
+                }
+            }
+
+            const toAdd = [];
+            for (const [id, visit] of wanted) {
+                if (!visitMarkers.has(id)) {
+                    const marker = this.createVisitMarker(visit);
+                    visitMarkers.set(id, marker);
+                    toAdd.push(marker);
+                }
+            }
+
+            // Bulk operations recluster once instead of once per marker
+            if (toRemove.length > 0) {
+                this.markerLayer.removeLayers(toRemove);
+            }
+            if (toAdd.length > 0) {
+                this.markerLayer.addLayers(toAdd);
+            }
         },
         
         // Fit map bounds to show all visits
@@ -1053,8 +1096,7 @@ function placeTraceApp() {
         
         // Clear selected visit
         clearSelectedVisit() {
-            this.selectedVisit = null;
-            this.renderMarkers();  // Re-render to update marker colors
+            this.setSelectedVisit(null);
         },
         
         // Apply a date-range filter, clearing any spatial filter
@@ -1211,8 +1253,8 @@ function placeTraceApp() {
         
         // Select visit from table
         selectVisitFromTable(visit) {
-            this.selectedVisit = visit;
-            
+            this.setSelectedVisit(visit);
+
             const bounds = this.map.getBounds();
             const visitLatLng = L.latLng(visit.latitude, visit.longitude);
             
@@ -1246,9 +1288,6 @@ function placeTraceApp() {
                 }
                 // Otherwise, don't move (visit is comfortably visible)
             }
-            
-            // Re-render markers to highlight selected visit
-            this.renderMarkers();
         },
         
         // Scroll table to show selected visit
