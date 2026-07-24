@@ -113,6 +113,35 @@ def geocode_point(lat, lon):
 # Location Table Operations
 # ============================================================================
 
+def get_location_name(conn, location_id, lat, lon):
+    """
+    Format a location's name from the Locations table.
+    Falls back to coordinates if not found.
+    """
+    if not location_id:
+        return f"({lat:.4f}, {lon:.4f})"
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT city, state, country
+            FROM Locations
+            WHERE id = %s
+        """, (location_id,))
+        result = cursor.fetchone()
+
+    if not result:
+        return f"({lat:.4f}, {lon:.4f})"
+
+    if result['city'] and result['state']:
+        return f"{result['city']}, {result['state']}"
+    elif result['city']:
+        return f"{result['city']}, {result['country']}"
+    elif result['state']:
+        return f"{result['state']}, {result['country']}"
+    else:
+        return result['country']
+
+
 def get_or_create_location(conn, location_info):
     """
     Get existing location_id or create new location entry.

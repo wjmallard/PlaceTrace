@@ -12,7 +12,7 @@ import json
 import sys
 from datetime import datetime, date
 
-from placetrace.db import get_main_connection
+from placetrace.db import get_location_name, get_main_connection
 from placetrace.config import project_root
 
 
@@ -48,39 +48,6 @@ def find_location_candidates(conn, start_date, end_date, min_hours=100):
     cursor.close()
     
     return results
-
-
-def get_location_name(conn, location_id, lat, lon):
-    """
-    Get location name from Locations table.
-    Falls back to coordinates if not found.
-    """
-    if not location_id:
-        return f"({lat:.4f}, {lon:.4f})"
-    
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT city, state, country
-        FROM Locations
-        WHERE id = %s
-    """, (location_id,))
-    
-    result = cursor.fetchone()
-    cursor.close()
-    
-    if not result:
-        return f"({lat:.4f}, {lon:.4f})"
-    
-    # Format location name
-    if result['city'] and result['state']:
-        return f"{result['city']}, {result['state']}"
-    elif result['city']:
-        return f"{result['city']}, {result['country']}"
-    elif result['state']:
-        return f"{result['state']}, {result['country']}"
-    else:
-        return result['country']
 
 
 def format_location_json(place_id, lat, lon, name, start_date, end_date):

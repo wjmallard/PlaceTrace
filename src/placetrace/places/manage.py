@@ -14,7 +14,7 @@ import sys
 from datetime import date
 from collections import defaultdict
 
-from placetrace.db import get_main_connection
+from placetrace.db import get_location_name, get_main_connection
 from placetrace.config import project_root
 from placetrace.geo import haversine_km
 
@@ -49,35 +49,6 @@ def save_locations(location_type, locations):
     
     with open(config_file, 'w') as f:
         json.dump(data, f, indent=2)
-
-
-def get_location_name(conn, location_id, lat, lon):
-    """Get location name from Locations table"""
-    if not location_id:
-        return f"({lat:.4f}, {lon:.4f})"
-    
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT city, state, country
-        FROM Locations
-        WHERE id = %s
-    """, (location_id,))
-    
-    result = cursor.fetchone()
-    cursor.close()
-    
-    if not result:
-        return f"({lat:.4f}, {lon:.4f})"
-    
-    # Format location name
-    if result['city'] and result['state']:
-        return f"{result['city']}, {result['state']}"
-    elif result['city']:
-        return f"{result['city']}, {result['country']}"
-    elif result['state']:
-        return f"{result['state']}, {result['country']}"
-    else:
-        return result['country']
 
 
 def find_continuous_periods(conn, monthly_data, min_months):
