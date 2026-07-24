@@ -12,6 +12,7 @@ pt-import-visits — Import Google Timeline location history visits.
 """
 
 import argparse
+import traceback
 
 import orjson
 from tqdm import tqdm
@@ -244,7 +245,6 @@ def main(argv=None):
         
     except Exception as e:
         print(f"\n✗ Error during import: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         conn.rollback()
         raise

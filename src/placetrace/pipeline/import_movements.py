@@ -13,6 +13,7 @@ All movements stored in Movements table with:
 """
 
 import argparse
+import traceback
 
 import orjson
 from pathlib import Path
@@ -619,7 +620,6 @@ def main(argv=None):
         
     except Exception as e:
         print(f"\n✗ Error during import: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         conn.rollback()
         raise

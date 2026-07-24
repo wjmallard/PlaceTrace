@@ -14,6 +14,8 @@ Requirements:
 
 import argparse
 import json
+import traceback
+from collections import Counter
 from pathlib import Path
 from datetime import datetime, timedelta
 from tqdm import tqdm
@@ -589,10 +591,7 @@ def insert_trips_to_database(conn, trips):
             
             # Determine primary location_id (most common)
             if trip['location_ids']:
-                # Count location_id frequency
-                from collections import Counter
-                location_counter = Counter(trip['location_ids'])
-                primary_location_id = location_counter.most_common(1)[0][0]
+                primary_location_id = Counter(trip['location_ids']).most_common(1)[0][0]
             else:
                 primary_location_id = None
             
@@ -827,7 +826,6 @@ def main(argv=None):
         
     except Exception as e:
         print(f"\n✗ Error during trip detection: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         conn.rollback()
         raise
