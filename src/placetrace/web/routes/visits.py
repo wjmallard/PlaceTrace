@@ -26,7 +26,7 @@ def parse_visit_filters():
         - end_date: YYYY-MM-DD (local dates) or ISO datetime (UTC), inclusive - ignored if date is provided
         - location_id: Filter by location ID
         - trip_id: Filter by trip ID
-        - limit: Maximum results (default 1000)
+        - limit: Maximum results (default 1000, max 50000 - enough for the full dataset)
         - offset: Pagination offset (default 0)
 
     Returns (error_response, joins, where, params, filters); error_response is
@@ -44,8 +44,8 @@ def parse_visit_filters():
     limit = request.args.get('limit', type=int, default=1000)
     offset = request.args.get('offset', type=int, default=0)
 
-    if limit < 1 or limit > 10000:
-        error = jsonify({'error': 'limit must be between 1 and 10000', 'status': 400}), 400
+    if limit < 1 or limit > 50000:
+        error = jsonify({'error': 'limit must be between 1 and 50000', 'status': 400}), 400
         return error, None, None, None, None
 
     joins = []
