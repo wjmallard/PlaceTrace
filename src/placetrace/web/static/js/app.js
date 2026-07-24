@@ -1077,12 +1077,13 @@ function placeTraceApp() {
             this.renderMarkers();  // Re-render to update marker colors
         },
         
-        // Time filter: view single day
-        async viewDay(dateStr) {
+        // Apply a date-range filter, clearing any spatial filter
+        // (time and space filters are mutually exclusive)
+        async applyTimeWindow(startStr, endStr) {
             // Close any open popup first
             this.map.closePopup();
-            
-            // Clear spatial filter state (time and space are mutually exclusive)
+
+            // Clear spatial filter state
             this.filterManager.clearSpatial();
             if (this.spatialFilterMarker) {
                 this.map.removeLayer(this.spatialFilterMarker);
@@ -1092,159 +1093,56 @@ function placeTraceApp() {
                 this.map.removeLayer(this.spatialFilterCircle);
                 this.spatialFilterCircle = null;
             }
-            // Set date range to just this day
-            this.filterManager.temporal.start = dateStr;
-            this.filterManager.temporal.end = dateStr;
-            
+
+            // Set date range
+            this.filterManager.temporal.start = startStr;
+            this.filterManager.temporal.end = endStr;
+
             // Reload visits and trips (if trips panel is expanded)
             if (this.showTripsSection) {
                 await this.loadTrips();
             }
             await this.loadRecentVisits();
         },
-        
+
+        // Compute [start, end] date strings for a ±days window around a date
+        dateWindow(dateStr, days) {
+            const date = new Date(dateStr);
+            const startDate = new Date(date);
+            startDate.setDate(startDate.getDate() - days);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + days);
+
+            return [
+                startDate.toISOString().split('T')[0],
+                endDate.toISOString().split('T')[0]
+            ];
+        },
+
+        // Time filter: view single day
+        async viewDay(dateStr) {
+            await this.applyTimeWindow(dateStr, dateStr);
+        },
+
         // Time filter: view 3 days (±1 day)
         async view3Day(dateStr) {
-            // Close any open popup first
-            this.map.closePopup();
-            
-            // Clear spatial filter state (time and space are mutually exclusive)
-            this.filterManager.spatial.lat = null;
-            this.filterManager.spatial.lon = null;
-            if (this.spatialFilterMarker) {
-                this.map.removeLayer(this.spatialFilterMarker);
-                this.spatialFilterMarker = null;
-            }
-            if (this.spatialFilterCircle) {
-                this.map.removeLayer(this.spatialFilterCircle);
-                this.spatialFilterCircle = null;
-            }
-            // Calculate 3 days: ±1 day
-            const date = new Date(dateStr);
-            const startDate = new Date(date);
-            startDate.setDate(startDate.getDate() - 1);
-            const endDate = new Date(date);
-            endDate.setDate(endDate.getDate() + 1);
-            
-            const startStr = startDate.toISOString().split('T')[0];
-            const endStr = endDate.toISOString().split('T')[0];
-            
-            // Set date range
-            this.filterManager.temporal.start = startStr;
-            this.filterManager.temporal.end = endStr;
-            
-            // Reload visits and trips (if trips panel is expanded)
-            if (this.showTripsSection) {
-                await this.loadTrips();
-            }
-            await this.loadRecentVisits();
+            await this.applyTimeWindow(...this.dateWindow(dateStr, 1));
         },
-        
+
         // Time filter: view week (±3 days)
         async viewWeek(dateStr) {
-            // Close any open popup first
-            this.map.closePopup();
-            
-            // Clear spatial filter (time and space are mutually exclusive)
-            this.filterManager.spatial.lat = null;
-            this.filterManager.spatial.lon = null;
-            if (this.spatialFilterMarker) {
-                this.map.removeLayer(this.spatialFilterMarker);
-                this.spatialFilterMarker = null;
-            }
-            if (this.spatialFilterCircle) {
-                this.map.removeLayer(this.spatialFilterCircle);
-                this.spatialFilterCircle = null;
-            }
-            // Calculate week: ±3 days
-            const date = new Date(dateStr);
-            const startDate = new Date(date);
-            startDate.setDate(startDate.getDate() - 3);
-            const endDate = new Date(date);
-            endDate.setDate(endDate.getDate() + 3);
-            
-            const startStr = startDate.toISOString().split('T')[0];
-            const endStr = endDate.toISOString().split('T')[0];
-            
-            // Set date range
-            this.filterManager.temporal.start = startStr;
-            this.filterManager.temporal.end = endStr;
-            
-            // Reload visits and trips (if trips panel is expanded)
-            if (this.showTripsSection) {
-                await this.loadTrips();
-            }
-            await this.loadRecentVisits();
+            await this.applyTimeWindow(...this.dateWindow(dateStr, 3));
         },
-        
+
         // Time filter: view month (±15 days)
         async viewMonth(dateStr) {
-            // Close any open popup first
-            this.map.closePopup();
-            
-            // Clear spatial filter (time and space are mutually exclusive)
-            this.filterManager.spatial.lat = null;
-            this.filterManager.spatial.lon = null;
-            if (this.spatialFilterMarker) {
-                this.map.removeLayer(this.spatialFilterMarker);
-                this.spatialFilterMarker = null;
-            }
-            if (this.spatialFilterCircle) {
-                this.map.removeLayer(this.spatialFilterCircle);
-                this.spatialFilterCircle = null;
-            }
-            // Calculate month: ±15 days
-            const date = new Date(dateStr);
-            const startDate = new Date(date);
-            startDate.setDate(startDate.getDate() - 15);
-            const endDate = new Date(date);
-            endDate.setDate(endDate.getDate() + 15);
-            
-            const startStr = startDate.toISOString().split('T')[0];
-            const endStr = endDate.toISOString().split('T')[0];
-            
-            // Set date range
-            this.filterManager.temporal.start = startStr;
-            this.filterManager.temporal.end = endStr;
-            
-            // Reload visits and trips (if trips panel is expanded)
-            if (this.showTripsSection) {
-                await this.loadTrips();
-            }
-            await this.loadRecentVisits();
+            await this.applyTimeWindow(...this.dateWindow(dateStr, 15));
         },
-        
+
         // Time filter: view full year
         async viewYear(dateStr) {
-            // Close any open popup first
-            this.map.closePopup();
-            
-            // Clear spatial filter (time and space are mutually exclusive)
-            this.filterManager.spatial.lat = null;
-            this.filterManager.spatial.lon = null;
-            if (this.spatialFilterMarker) {
-                this.map.removeLayer(this.spatialFilterMarker);
-                this.spatialFilterMarker = null;
-            }
-            if (this.spatialFilterCircle) {
-                this.map.removeLayer(this.spatialFilterCircle);
-                this.spatialFilterCircle = null;
-            }
-            // Get full year
-            const date = new Date(dateStr);
-            const year = date.getFullYear();
-            const startStr = `${year}-01-01`;
-            const endStr = `${year}-12-31`;
-            
-            // Set date range
-            this.filterManager.temporal.start = startStr;
-            this.filterManager.temporal.end = endStr;
-            
-            // Reload visits and trips (if trips panel is expanded)
-            if (this.showTripsSection) {
-                await this.loadTrips();
-            }
-            await this.loadRecentVisits();
+            const year = this.parseLocalDate(dateStr).getFullYear();
+            await this.applyTimeWindow(`${year}-01-01`, `${year}-12-31`);
         },
         
         // Space filter: view visits within radius
