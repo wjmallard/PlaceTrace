@@ -1177,22 +1177,29 @@ function placeTraceApp() {
             }
         },
         
+        // Change the tracks-mode day: any selected spot belonged to the
+        // previous day's context, so drop it (and its highlight ring)
+        async trackDayChanged() {
+            this.setSelectedSpot(null);
+            await this.loadMovements();
+        },
+
         // Navigate to previous day
         async prevDay() {
             if (!this.selectedDay) return;
             const date = new Date(this.selectedDay);
             date.setDate(date.getDate() - 1);
             this.selectedDay = date.toISOString().split('T')[0];
-            await this.loadMovements();
+            await this.trackDayChanged();
         },
-        
+
         // Navigate to next day
         async nextDay() {
             if (!this.selectedDay) return;
             const date = new Date(this.selectedDay);
             date.setDate(date.getDate() + 1);
             this.selectedDay = date.toISOString().split('T')[0];
-            await this.loadMovements();
+            await this.trackDayChanged();
         },
         
         // Clear selected spot

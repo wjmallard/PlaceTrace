@@ -123,9 +123,9 @@
                                 class="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                             ←
                         </button>
-                        <input type="date" 
+                        <input type="date"
                                x-model="selectedDay"
-                               @change="loadMovements()"
+                               @change="trackDayChanged()"
                                :disabled="!showMovement"
                                class="flex-1 p-2 text-sm border border-gray-300 rounded disabled:bg-gray-100 disabled:cursor-not-allowed">
                         <button @click="nextDay()" 
