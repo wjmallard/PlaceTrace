@@ -1,6 +1,5 @@
 __pycache__/
 .venv/
-uv.lock
 config.yaml
 data/home_locations.json
 data/work_locations.json
