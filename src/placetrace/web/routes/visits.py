@@ -3,189 +3,177 @@ Visits API endpoint
 GET /api/visits - List visits with filtering
 """
 
-from flask import Blueprint, request, jsonify, current_app
-from sqlalchemy import func, and_
 from datetime import datetime
-from geoalchemy2 import Geography
-from placetrace.web.models import Visit, trip_visits
-from placetrace.web.database import db
+
+from flask import Blueprint, request, jsonify
+
+from placetrace.web.database import get_db
+from placetrace.web.serialize import visit_dict
 
 bp = Blueprint('visits', __name__)
+
+VISIT_COLUMNS = """
+    v.id,
+    v.start_time,
+    v.end_time,
+    v.duration_minutes,
+    v.local_start_date,
+    v.local_start_time,
+    v.local_end_date,
+    v.local_end_time,
+    ST_Y(v.location::geometry) AS latitude,
+    ST_X(v.location::geometry) AS longitude,
+    v.semantic_type,
+    l.city,
+    l.county,
+    l.state,
+    l.country
+"""
 
 
 @bp.route('/visits')
 def get_visits():
     """
     Get visits with optional filters
-    
+
     Query parameters:
         - date: Single date (YYYY-MM-DD) - convenient shorthand for full day
         - bbox: Bounding box as 'min_lat,min_lng,max_lat,max_lng'
         - lat, lon, radius_km: Radius-based spatial filter (alternative to bbox)
-        - start_date: ISO datetime (inclusive) - ignored if date is provided
-        - end_date: ISO datetime (inclusive) - ignored if date is provided
+        - start_date: YYYY-MM-DD (local dates) or ISO datetime (UTC), inclusive - ignored if date is provided
+        - end_date: YYYY-MM-DD (local dates) or ISO datetime (UTC), inclusive - ignored if date is provided
         - location_id: Filter by location ID
         - trip_id: Filter by trip ID
         - limit: Maximum results (default 1000)
         - offset: Pagination offset (default 0)
-    
+
     Returns:
         JSON response with visits array, count, and filters_applied
     """
-    try:
-        # Parse query parameters
-        date_param = request.args.get('date')
-        bbox = request.args.get('bbox')
-        lat = request.args.get('lat', type=float)
-        lon = request.args.get('lon', type=float)
-        radius_km = request.args.get('radius_km', type=float)
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        
-        location_id = request.args.get('location_id', type=int)
-        trip_id = request.args.get('trip_id', type=int)
-        limit = request.args.get('limit', type=int, default=1000)
-        offset = request.args.get('offset', type=int, default=0)
-        
-        # Validate limit
-        if limit < 1 or limit > 10000:
-            return jsonify({'error': 'limit must be between 1 and 10000', 'status': 400}), 400
-        
-        # Build query
-        query = db.select(Visit).options(
-            db.joinedload(Visit.location_rel)
-        )
-        
-        filters = {}
-        
-        # Handle date parameter - convert YYYY-MM-DD to filter on local dates
-        # This overwrites start_date/end_date if provided
-        if date_param:
-            try:
-                date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
-                # Filter: visit overlaps this date if local_start_date <= date AND local_end_date >= date
-                query = query.where(
-                    Visit.local_start_date <= date_obj,
-                    Visit.local_end_date >= date_obj
-                )
-                filters['date'] = date_param
-                # Clear start_date/end_date to avoid double filtering
-                start_date = None
-                end_date = None
-            except ValueError:
-                return jsonify({
-                    'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
-                    'status': 400
-                }), 400
-        
-        # Bounding box filter
-        if bbox:
-            try:
-                min_lat, min_lng, max_lat, max_lng = map(float, bbox.split(','))
-                bbox_geom = func.ST_MakeEnvelope(min_lng, min_lat, max_lng, max_lat, 4326)
-                query = query.where(func.ST_Intersects(Visit.location, bbox_geom))
-                filters['bbox'] = bbox
-            except (ValueError, TypeError):
-                return jsonify({'error': 'Invalid bbox format: expected min_lat,min_lng,max_lat,max_lng', 'status': 400}), 400
-        
-        # Radius-based spatial filter (alternative to bbox)
-        if lat is not None and lon is not None and radius_km is not None:
-            # Create a geography point from lat/lon
-            center_point = func.ST_SetSRID(func.ST_MakePoint(lon, lat), 4326)
-            # ST_DWithin with Geography type uses spherical distance (meters)
-            query = query.where(
-                func.ST_DWithin(
-                    Visit.location,  # Already a Geography type
-                    func.cast(center_point, Geography),  # Cast to Geography
-                    radius_km * 1000  # Convert km to meters
-                )
-            )
-            filters['spatial'] = f'{lat},{lon} within {radius_km}km'
-        
-        # Date range filters (use local dates for YYYY-MM-DD strings, UTC for ISO timestamps)
-        if start_date:
-            try:
-                # If it looks like YYYY-MM-DD, use local_end_date
-                if len(start_date) == 10 and start_date.count('-') == 2:
-                    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                    query = query.where(Visit.local_end_date >= start_date_obj)
-                else:
-                    # ISO timestamp - use UTC start_time
-                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-                    query = query.where(Visit.start_time >= start_dt)
-                filters['start_date'] = start_date
-            except (ValueError, AttributeError) as e:
-                return jsonify({'error': f'Invalid start_date format: {str(e)}', 'status': 400}), 400
-        
-        if end_date:
-            try:
-                # If it looks like YYYY-MM-DD, use local_start_date
-                if len(end_date) == 10 and end_date.count('-') == 2:
-                    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                    query = query.where(Visit.local_start_date <= end_date_obj)
-                else:
-                    # ISO timestamp - use UTC end_time
-                    end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-                    query = query.where(Visit.end_time <= end_dt)
-                filters['end_date'] = end_date
-            except (ValueError, AttributeError) as e:
-                return jsonify({'error': f'Invalid end_date format: {str(e)}', 'status': 400}), 400
-        
-        # Location filter
-        if location_id:
-            query = query.where(Visit.location_id == location_id)
-            filters['location_id'] = location_id
-        
-        # Trip filter
-        if trip_id:
-            query = query.join(trip_visits).where(trip_visits.c.trip_id == trip_id)
-            filters['trip_id'] = trip_id
-        
-        # Order by start time descending (most recent first)
-        query = query.order_by(Visit.start_time.desc())
-        
-        # Apply pagination
-        query = query.limit(limit).offset(offset)
-        
-        # Execute query
-        visits = db.session.execute(query).scalars().all()
-        
-        # Format response
-        visits_data = []
-        for visit in visits:
-            # Get lat/lng from geography point
-            if visit.location:
-                coords = db.session.execute(
-                    db.select(
-                        func.ST_Y(func.ST_GeomFromWKB(visit.location)).label('lat'),
-                        func.ST_X(func.ST_GeomFromWKB(visit.location)).label('lng')
-                    )
-                ).first()
-                lat, lng = coords.lat, coords.lng
-            else:
-                lat, lng = None, None
-            
-            visits_data.append({
-                'id': visit.id,
-                'start_time': visit.start_time.isoformat() if visit.start_time else None,
-                'end_time': visit.end_time.isoformat() if visit.end_time else None,
-                'duration_minutes': visit.duration_minutes,
-                'local_start_date': visit.local_start_date.isoformat() if visit.local_start_date else None,
-                'local_start_time': visit.local_start_time.isoformat() if visit.local_start_time else None,
-                'local_end_date': visit.local_end_date.isoformat() if visit.local_end_date else None,
-                'local_end_time': visit.local_end_time.isoformat() if visit.local_end_time else None,
-                'latitude': lat,
-                'longitude': lng,
-                'location_name': visit.location_name,
-                'semantic_type': visit.semantic_type
-            })
-        
-        return jsonify({
-            'visits': visits_data,
-            'count': len(visits_data),
-            'filters_applied': filters
+    date_param = request.args.get('date')
+    bbox = request.args.get('bbox')
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    radius_km = request.args.get('radius_km', type=float)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    location_id = request.args.get('location_id', type=int)
+    trip_id = request.args.get('trip_id', type=int)
+    limit = request.args.get('limit', type=int, default=1000)
+    offset = request.args.get('offset', type=int, default=0)
+
+    if limit < 1 or limit > 10000:
+        return jsonify({'error': 'limit must be between 1 and 10000', 'status': 400}), 400
+
+    where = []
+    joins = []
+    params = {
+        'limit': limit,
+        'offset': offset,
+    }
+    filters = {}
+
+    # Single-date shorthand: the visit overlaps this date if
+    # local_start_date <= date AND local_end_date >= date
+    # (overrides start_date/end_date if both are provided)
+    if date_param:
+        try:
+            date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'error': 'Invalid date format. Use YYYY-MM-DD (e.g., 2024-12-01)',
+                'status': 400
+            }), 400
+        where.append("v.local_start_date <= %(date)s")
+        where.append("v.local_end_date >= %(date)s")
+        params['date'] = date_obj
+        filters['date'] = date_param
+        start_date = None
+        end_date = None
+
+    # Bounding box filter
+    if bbox:
+        try:
+            min_lat, min_lng, max_lat, max_lng = map(float, bbox.split(','))
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid bbox format: expected min_lat,min_lng,max_lat,max_lng', 'status': 400}), 400
+        where.append("ST_Intersects(v.location, ST_MakeEnvelope(%(min_lng)s, %(min_lat)s, %(max_lng)s, %(max_lat)s, 4326))")
+        params.update({
+            'min_lat': min_lat,
+            'min_lng': min_lng,
+            'max_lat': max_lat,
+            'max_lng': max_lng,
         })
-    
-    except Exception as e:
-        current_app.logger.error(f"Error in get_visits: {str(e)}")
-        return jsonify({'error': 'Internal server error', 'status': 500}), 500
+        filters['bbox'] = bbox
+
+    # Radius-based spatial filter (alternative to bbox)
+    if lat is not None and lon is not None and radius_km is not None:
+        where.append("""ST_DWithin(
+            v.location,
+            ST_SetSRID(ST_MakePoint(%(center_lon)s, %(center_lat)s), 4326)::geography,
+            %(radius_m)s
+        )""")
+        params.update({
+            'center_lat': lat,
+            'center_lon': lon,
+            'radius_m': radius_km * 1000,
+        })
+        filters['spatial'] = f'{lat},{lon} within {radius_km}km'
+
+    # Date range filters (YYYY-MM-DD strings match local dates, ISO timestamps match UTC)
+    if start_date:
+        try:
+            if len(start_date) == 10 and start_date.count('-') == 2:
+                params['range_start_date'] = datetime.strptime(start_date, '%Y-%m-%d').date()
+                where.append("v.local_end_date >= %(range_start_date)s")
+            else:
+                params['range_start_dt'] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                where.append("v.start_time >= %(range_start_dt)s")
+            filters['start_date'] = start_date
+        except (ValueError, AttributeError) as e:
+            return jsonify({'error': f'Invalid start_date format: {str(e)}', 'status': 400}), 400
+
+    if end_date:
+        try:
+            if len(end_date) == 10 and end_date.count('-') == 2:
+                params['range_end_date'] = datetime.strptime(end_date, '%Y-%m-%d').date()
+                where.append("v.local_start_date <= %(range_end_date)s")
+            else:
+                params['range_end_dt'] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                where.append("v.end_time <= %(range_end_dt)s")
+            filters['end_date'] = end_date
+        except (ValueError, AttributeError) as e:
+            return jsonify({'error': f'Invalid end_date format: {str(e)}', 'status': 400}), 400
+
+    if location_id:
+        where.append("v.location_id = %(location_id)s")
+        params['location_id'] = location_id
+        filters['location_id'] = location_id
+
+    if trip_id:
+        joins.append("JOIN Trip_Visits tv ON tv.visit_id = v.id")
+        where.append("tv.trip_id = %(trip_id)s")
+        params['trip_id'] = trip_id
+        filters['trip_id'] = trip_id
+
+    where_sql = "WHERE " + " AND ".join(where) if where else ""
+
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute(f"""
+            SELECT
+                {VISIT_COLUMNS}
+            FROM Visits v
+            LEFT JOIN Locations l ON l.id = v.location_id
+            {" ".join(joins)}
+            {where_sql}
+            ORDER BY v.start_time DESC, v.id DESC
+            LIMIT %(limit)s OFFSET %(offset)s
+        """, params)
+        visits = cursor.fetchall()
+
+    return jsonify({
+        'visits': [visit_dict(row) for row in visits],
+        'count': len(visits),
+        'filters_applied': filters,
+    })
