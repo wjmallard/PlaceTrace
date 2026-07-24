@@ -80,61 +80,14 @@ def get_location_name(conn, location_id, lat, lon):
         return result['country']
 
 
-def auto_detect_homes(conn, min_months=2):
+def find_continuous_periods(conn, monthly_data, min_months):
     """
-    Auto-detect home locations from visit data.
-    Finds locations where user spent significant time, excluding known work locations.
+    Group monthly visit totals by place and split into continuous periods.
+    A gap of more than 2 months starts a new period (1-month gaps are allowed,
+    e.g. a vacation). Returns periods sorted by start date.
     """
-    # Load work locations to exclude them
-    work_locations = load_locations('work')
-    work_place_ids = {w['place_id'] for w in work_locations if w.get('place_id')}
-    
-    if work_place_ids:
-        print(f"   Excluding {len(work_place_ids)} known work location(s)")
-    
-    cursor = conn.cursor()
-    
-    # Get all high-duration visits grouped by location and month
-    if work_place_ids:
-        cursor.execute("""
-            SELECT 
-                place_id,
-                DATE_TRUNC('month', start_time)::date as month,
-                ST_Y(location::geometry) as lat,
-                ST_X(location::geometry) as lon,
-                location_id,
-                COUNT(*) as visit_count,
-                SUM(duration_minutes) as total_minutes
-            FROM Visits
-            WHERE place_id IS NOT NULL
-              AND place_id != ALL(%s)
-            GROUP BY place_id, DATE_TRUNC('month', start_time), lat, lon, location_id
-            HAVING SUM(duration_minutes) > 5000  -- 83+ hours per month
-            ORDER BY month, total_minutes DESC
-        """, (list(work_place_ids),))
-    else:
-        cursor.execute("""
-            SELECT 
-                place_id,
-                DATE_TRUNC('month', start_time)::date as month,
-                ST_Y(location::geometry) as lat,
-                ST_X(location::geometry) as lon,
-                location_id,
-                COUNT(*) as visit_count,
-                SUM(duration_minutes) as total_minutes
-            FROM Visits
-            WHERE place_id IS NOT NULL
-            GROUP BY place_id, DATE_TRUNC('month', start_time), lat, lon, location_id
-            HAVING SUM(duration_minutes) > 5000  -- 83+ hours per month
-            ORDER BY month, total_minutes DESC
-        """)
-    
-    monthly_data = cursor.fetchall()
-    cursor.close()
-    
-    # Group by place_id to find continuous residency periods
     place_periods = defaultdict(list)
-    
+
     for row in monthly_data:
         place_periods[row['place_id']].append({
             'month': row['month'],
@@ -142,52 +95,82 @@ def auto_detect_homes(conn, min_months=2):
             'lon': row['lon'],
             'location_id': row['location_id'],
             'visit_count': row['visit_count'],
-            'total_hours': row['total_minutes'] / 60
+            'total_hours': row['total_minutes'] / 60,
         })
-    
-    # Find continuous periods (homes)
-    detected_homes = []
-    
+
+    detected = []
+
     for place_id, months in place_periods.items():
         if len(months) < min_months:
             continue
-        
-        # Sort by month
+
         months.sort(key=lambda m: m['month'])
-        
-        # Find continuous periods (gap of >2 months = different residency)
         current_period = [months[0]]
-        
-        for i in range(1, len(months)):
+
+        for month in months[1:]:
             prev_month = current_period[-1]['month']
-            curr_month = months[i]['month']
-            
-            # Calculate month difference
-            month_diff = ((curr_month.year - prev_month.year) * 12 + 
-                         (curr_month.month - prev_month.month))
-            
-            if month_diff <= 2:  # Allow 1-month gap (e.g., vacation)
-                current_period.append(months[i])
+            month_diff = ((month['month'].year - prev_month.year) * 12 +
+                          (month['month'].month - prev_month.month))
+
+            if month_diff <= 2:
+                current_period.append(month)
             else:
-                # Save current period as a home
                 if len(current_period) >= min_months:
-                    home = finalize_period(conn, place_id, current_period)
-                    if home:
-                        detected_homes.append(home)
-                
-                # Start new period
-                current_period = [months[i]]
-        
+                    period = finalize_period(conn, place_id, current_period)
+                    if period:
+                        detected.append(period)
+                current_period = [month]
+
         # Don't forget the last period
         if len(current_period) >= min_months:
-            home = finalize_period(conn, place_id, current_period)
-            if home:
-                detected_homes.append(home)
-    
-    # Sort by start date
-    detected_homes.sort(key=lambda h: h['start_date'])
-    
-    return detected_homes
+            period = finalize_period(conn, place_id, current_period)
+            if period:
+                detected.append(period)
+
+    detected.sort(key=lambda p: p['start_date'])
+
+    return detected
+
+
+def auto_detect_homes(conn, min_months=2):
+    """
+    Auto-detect home locations from visit data.
+    Finds locations where user spent significant time, excluding known work locations.
+    """
+    # Load work locations to exclude them
+    work_locations = load_locations('work')
+    work_place_ids = [w['place_id'] for w in work_locations if w.get('place_id')]
+
+    if work_place_ids:
+        print(f"   Excluding {len(work_place_ids)} known work location(s)")
+
+    cursor = conn.cursor()
+
+    # Get all high-duration visits grouped by location and month
+    # (an empty exclusion list matches every place_id)
+    cursor.execute("""
+        SELECT
+            place_id,
+            DATE_TRUNC('month', start_time)::date as month,
+            ST_Y(location::geometry) as lat,
+            ST_X(location::geometry) as lon,
+            location_id,
+            COUNT(*) as visit_count,
+            SUM(duration_minutes) as total_minutes
+        FROM Visits
+        WHERE place_id IS NOT NULL
+          AND place_id != ALL(%(work_place_ids)s)
+        GROUP BY place_id, DATE_TRUNC('month', start_time), lat, lon, location_id
+        HAVING SUM(duration_minutes) > 5000  -- 83+ hours per month
+        ORDER BY month, total_minutes DESC
+    """, {
+        'work_place_ids': work_place_ids,
+    })
+
+    monthly_data = cursor.fetchall()
+    cursor.close()
+
+    return find_continuous_periods(conn, monthly_data, min_months)
 
 
 def auto_detect_work(conn, min_months=2):
@@ -196,10 +179,10 @@ def auto_detect_work(conn, min_months=2):
     Finds locations labeled 'Work' where user spent significant time.
     """
     cursor = conn.cursor()
-    
+
     # Get all work visits grouped by location and month
     cursor.execute("""
-        SELECT 
+        SELECT
             place_id,
             DATE_TRUNC('month', start_time)::date as month,
             ST_Y(location::geometry) as lat,
@@ -214,66 +197,11 @@ def auto_detect_work(conn, min_months=2):
         HAVING SUM(duration_minutes) > 2000  -- 33+ hours per month
         ORDER BY month, total_minutes DESC
     """)
-    
+
     monthly_data = cursor.fetchall()
     cursor.close()
-    
-    # Group by place_id to find continuous employment periods
-    place_periods = defaultdict(list)
-    
-    for row in monthly_data:
-        place_periods[row['place_id']].append({
-            'month': row['month'],
-            'lat': row['lat'],
-            'lon': row['lon'],
-            'location_id': row['location_id'],
-            'visit_count': row['visit_count'],
-            'total_hours': row['total_minutes'] / 60
-        })
-    
-    # Find continuous periods (jobs)
-    detected_work = []
-    
-    for place_id, months in place_periods.items():
-        if len(months) < min_months:
-            continue
-        
-        # Sort by month
-        months.sort(key=lambda m: m['month'])
-        
-        # Find continuous periods (gap of >2 months = different job)
-        current_period = [months[0]]
-        
-        for i in range(1, len(months)):
-            prev_month = current_period[-1]['month']
-            curr_month = months[i]['month']
-            
-            # Calculate month difference
-            month_diff = ((curr_month.year - prev_month.year) * 12 + 
-                         (curr_month.month - prev_month.month))
-            
-            if month_diff <= 2:  # Allow 1-month gap
-                current_period.append(months[i])
-            else:
-                # Save current period as a workplace
-                if len(current_period) >= min_months:
-                    work = finalize_period(conn, place_id, current_period)
-                    if work:
-                        detected_work.append(work)
-                
-                # Start new period
-                current_period = [months[i]]
-        
-        # Don't forget the last period
-        if len(current_period) >= min_months:
-            work = finalize_period(conn, place_id, current_period)
-            if work:
-                detected_work.append(work)
-    
-    # Sort by start date
-    detected_work.sort(key=lambda w: w['start_date'])
-    
-    return detected_work
+
+    return find_continuous_periods(conn, monthly_data, min_months)
 
 
 def finalize_period(conn, place_id, monthly_data):
