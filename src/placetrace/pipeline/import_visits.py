@@ -108,10 +108,13 @@ def import_visits(conn, json_path):
             lat_rounded = round(lat, 6)
             lon_rounded = round(lon, 6)
             
-            # Check if this visit already exists (resume capability)
-            if (start_time, end_time, lat_rounded, lon_rounded) in existing_visits:
+            # Check if this visit already exists (resume capability); track new
+            # inserts too, so a duplicate entry within the JSON is only imported once
+            key = (start_time, end_time, lat_rounded, lon_rounded)
+            if key in existing_visits:
                 skipped += 1
                 continue
+            existing_visits.add(key)
             
             # Extract optional fields
             place_id = top_candidate.get('placeID')
