@@ -402,13 +402,18 @@ function placeTraceApp() {
             };
         },
         
+        // Parse a YYYY-MM-DD string as local time (bare date strings parse as UTC)
+        parseLocalDate(dateStr) {
+            return new Date(dateStr + 'T00:00:00');
+        },
+
         // Group trips by year
         get tripsByYear() {
             const grouped = {};
             const currentYear = new Date().getFullYear();
-            
+
             this.filteredTrips.forEach(trip => {
-                const year = new Date(trip.local_start_date).getFullYear();
+                const year = this.parseLocalDate(trip.local_start_date).getFullYear();
                 if (!grouped[year]) {
                     grouped[year] = [];
                     // Expand current year by default
@@ -431,8 +436,8 @@ function placeTraceApp() {
         
         // Check if year grouping is needed
         get shouldShowYearGrouping() {
-            const years = [...new Set(this.filteredTrips.map(trip => 
-                new Date(trip.local_start_date).getFullYear()
+            const years = [...new Set(this.filteredTrips.map(trip =>
+                this.parseLocalDate(trip.local_start_date).getFullYear()
             ))];
             return years.length > 1;
         },
@@ -692,8 +697,8 @@ function placeTraceApp() {
         
         // Format date range for trip display
         formatDateRange(startTime, endTime) {
-            const start = new Date(startTime);
-            const end = new Date(endTime);
+            const start = this.parseLocalDate(startTime);
+            const end = this.parseLocalDate(endTime);
             
             const options = { month: 'short', day: 'numeric', year: 'numeric' };
             
