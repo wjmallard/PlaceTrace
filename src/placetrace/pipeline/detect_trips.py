@@ -302,12 +302,14 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     trips = []
     current_trip_visits = []
     last_visit_end = None
-    
+    last_anchor = None      # Most recent home/work visit
+    departure_visit = None  # Anchor the current away block departed from
+
     for visit in tqdm(visits, desc="Analyzing visits"):
         # Check if at home or work
         at_home = is_home_visit(visit, home_locations)
         at_work = is_work_visit(visit, work_locations)
-        
+
         # Check if gap should split trip (uses activity data)
         if last_visit_end and current_trip_visits:
             should_split = should_split_trip(
@@ -319,30 +321,61 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
             )
         else:
             should_split = False
-        
+
         if at_home or at_work:
-            # Back home/at work - finalize current trip if exists
+            # Back home/at work - finalize current trip if exists.
+            # Anchors only bound the trip when tightly adjacent to it in time;
+            # bracketing across a data gap would silently inflate the duration
+            # (unlike split decisions, movement bridging is no excuse here)
             if current_trip_visits:
-                trip = finalize_trip(current_trip_visits, home_locations, trip_config)
+                comeback_gap = (visit['start_time'] - current_trip_visits[-1]['end_time']).total_seconds() / 3600
+                trip = finalize_trip(
+                    current_trip_visits,
+                    home_locations,
+                    trip_config,
+                    departure_visit=departure_visit,
+                    comeback_visit=visit if comeback_gap <= max_gap_hours else None,
+                )
                 if trip:  # Only add if meets distance criteria
                     trips.append(trip)
                 current_trip_visits = []
+            last_anchor = visit
         elif should_split:
             # Gap should split trip - finalize current and start new one
+            # (the block ended in a data gap rather than a return home, so it
+            # has no comeback anchor and the new block has no departure anchor)
             if current_trip_visits:
-                trip = finalize_trip(current_trip_visits, home_locations, trip_config)
+                trip = finalize_trip(
+                    current_trip_visits,
+                    home_locations,
+                    trip_config,
+                    departure_visit=departure_visit,
+                )
                 if trip:
                     trips.append(trip)
             current_trip_visits = [visit]
+            departure_visit = None
         else:
-            # Away from home - add to current trip
+            # Away from home - add to current trip; the departure anchor only
+            # counts when tightly adjacent to the block's first visit
+            if not current_trip_visits:
+                departure_visit = None
+                if last_anchor:
+                    departure_gap = (visit['start_time'] - last_anchor['end_time']).total_seconds() / 3600
+                    if departure_gap <= max_gap_hours:
+                        departure_visit = last_anchor
             current_trip_visits.append(visit)
-        
+
         last_visit_end = visit['end_time']
-    
-    # Finalize last trip if exists
+
+    # Finalize last trip if exists (no comeback anchor at the end of the data)
     if current_trip_visits:
-        trip = finalize_trip(current_trip_visits, home_locations, trip_config)
+        trip = finalize_trip(
+            current_trip_visits,
+            home_locations,
+            trip_config,
+            departure_visit=departure_visit,
+        )
         if trip:
             trips.append(trip)
     
@@ -356,19 +389,40 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     return trips
 
 
-def finalize_trip(trip_visits, home_locations, trip_config):
+def finalize_trip(trip_visits, home_locations, trip_config, departure_visit=None, comeback_visit=None):
     """
     Finalize a trip by calculating stats and checking criteria.
     Returns trip dict or None if doesn't meet criteria.
+
+    The trip spans door to door when its anchors are known: from the end of
+    the home/work visit departed from (departure_visit) to the start of the
+    home/work visit returned to (comeback_visit). Sides without an anchor
+    (data gaps, start/end of history) fall back to the away visits' own span.
     """
     if not trip_visits:
         return None
 
-    # The trip ends when its latest-ending visit does; with tied or overlapping
-    # start times that is not necessarily the last visit in scan order
-    start_time = trip_visits[0]['start_time']
-    last_visit = max(trip_visits, key=lambda v: v['end_time'])
-    end_time = last_visit['end_time']
+    if departure_visit:
+        start_time = departure_visit['end_time']
+        local_start_date = departure_visit['local_end_date']
+        local_start_time = departure_visit['local_end_time']
+    else:
+        start_time = trip_visits[0]['start_time']
+        local_start_date = trip_visits[0]['local_start_date']
+        local_start_time = trip_visits[0]['local_start_time']
+
+    if comeback_visit:
+        end_time = comeback_visit['start_time']
+        local_end_date = comeback_visit['local_start_date']
+        local_end_time = comeback_visit['local_start_time']
+    else:
+        # The trip ends when its latest-ending visit does; with tied or
+        # overlapping start times that is not necessarily the last in scan order
+        last_visit = max(trip_visits, key=lambda v: v['end_time'])
+        end_time = last_visit['end_time']
+        local_end_date = last_visit['local_end_date']
+        local_end_time = last_visit['local_end_time']
+
     duration_hours = (end_time - start_time).total_seconds() / 3600
 
     visit_ids = [v['id'] for v in trip_visits]
@@ -398,13 +452,6 @@ def finalize_trip(trip_visits, home_locations, trip_config):
     # If duration doesn't match any category, it's not a trip
     if trip_category is None:
         return None  # Too short to be a trip
-    
-    # Local wall-clock bounds come from the first/latest-ending visit
-    # (start_time/end_time are UTC, so their date/time parts are not local)
-    local_start_date = trip_visits[0]['local_start_date']
-    local_start_time = trip_visits[0]['local_start_time']
-    local_end_date = last_visit['local_end_date']
-    local_end_time = last_visit['local_end_time']
 
     return {
         'start_time': start_time,
