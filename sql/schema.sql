@@ -67,7 +67,10 @@ CREATE TABLE Visits (
     semantic_type TEXT,                 -- Google's classification (HOME, WORK, etc.)
     
     -- Google Timeline metadata
-    place_id TEXT                       -- Google Place ID (if available)
+    place_id TEXT,                      -- Google Place ID (if available)
+
+    -- Enriched place name (e.g. from Arc's hand-corrected places)
+    place_name TEXT
 );
 
 -- Indexes for Visits

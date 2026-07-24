@@ -211,6 +211,7 @@ def get_spots():
                 s.first_visit,
                 s.last_visit,
                 s.last_local_date,
+                s.place_name,
                 l.city,
                 l.county,
                 l.state,
@@ -224,7 +225,8 @@ def get_spots():
                     min(v.start_time) AS first_visit,
                     max(v.end_time) AS last_visit,
                     max(v.local_start_date) AS last_local_date,
-                    max(v.location_id) AS location_id
+                    max(v.location_id) AS location_id,
+                    mode() WITHIN GROUP (ORDER BY v.place_name) AS place_name
                 FROM Visits v
                 {" ".join(joins)}
                 {where_sql}
@@ -247,7 +249,7 @@ def get_spots():
                 'first_visit': row['first_visit'].isoformat() if row['first_visit'] else None,
                 'last_visit': row['last_visit'].isoformat() if row['last_visit'] else None,
                 'last_local_date': row['last_local_date'].isoformat() if row['last_local_date'] else None,
-                'location_name': format_location_name(row),
+                'location_name': row['place_name'] or format_location_name(row),
             }
             for row in spots
         ],

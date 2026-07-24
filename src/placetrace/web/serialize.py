@@ -13,6 +13,7 @@ VISIT_COLUMNS = """
     ST_Y(v.location::geometry) AS latitude,
     ST_X(v.location::geometry) AS longitude,
     v.semantic_type,
+    v.place_name,
     l.city,
     l.county,
     l.state,
@@ -50,7 +51,7 @@ def visit_dict(row, include_local=True):
         'duration_minutes': row['duration_minutes'],
         'latitude': row['latitude'],
         'longitude': row['longitude'],
-        'location_name': format_location_name(row),
+        'location_name': row['place_name'] or format_location_name(row),
         'semantic_type': row['semantic_type'],
     }
 
