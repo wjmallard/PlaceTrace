@@ -53,3 +53,26 @@ button {
 [x-cloak] {
     display: none !important;
 }
+
+/* Pulsing ring marking the selected spot on the map */
+.selection-ring-static,
+.selection-ring-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.selection-ring-static {
+    border: 2px solid #DC2626;
+}
+
+.selection-ring-pulse {
+    border: 3px solid #DC2626;
+    animation: selection-pulse 1.6s ease-out infinite;
+}
+
+@keyframes selection-pulse {
+    0%   { transform: scale(0.7); opacity: 0.9; }
+    100% { transform: scale(1.6); opacity: 0; }
+}

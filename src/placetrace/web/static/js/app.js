@@ -16,6 +16,7 @@ function placeTraceApp() {
         markerLayer: null,
         spatialFilterMarker: null,
         spatialFilterCircle: null,
+        selectionRing: null,
         loading: false,
         spots: [],
         
@@ -406,6 +407,41 @@ function placeTraceApp() {
             if (newMarker) {
                 newMarker.setIcon(this.spotIcon(newMarker.spot, true));
             }
+
+            this.updateSelectionRing();
+        },
+
+        // Place (or clear) the pulsing ring marking the selected spot.
+        // The ring lives outside the cluster group, so the selection stays
+        // visible even when the spot's own marker is hidden inside a cluster.
+        updateSelectionRing() {
+            if (this.selectionRing) {
+                this.map.removeLayer(this.selectionRing);
+                this.selectionRing = null;
+            }
+
+            if (!this.selectedSpot) {
+                return;
+            }
+
+            const ring = L.divIcon({
+                html: '<div style="position: relative; width: 44px; height: 44px;">'
+                    + '<div class="selection-ring-static"></div>'
+                    + '<div class="selection-ring-pulse"></div>'
+                    + '</div>',
+                className: '',
+                iconSize: [44, 44],
+                iconAnchor: [22, 22]
+            });
+
+            this.selectionRing = L.marker(
+                [this.selectedSpot.latitude, this.selectedSpot.longitude],
+                {
+                    icon: ring,
+                    interactive: false,  // Clicks pass through to the spot marker beneath
+                    zIndexOffset: 1000
+                }
+            ).addTo(this.map);
         },
 
         // Sync spot markers with this.spots, adding/removing only what changed
@@ -1335,7 +1371,9 @@ function placeTraceApp() {
         // Select a visit from the table: highlight its spot on the map
         selectVisitFromTable(visit) {
             const marker = spotMarkers.get(spotKey(visit.latitude, visit.longitude));
-            this.setSelectedSpot(marker ? marker.spot : null);
+            // The spot may not be on the map (capped out of a dense viewport):
+            // fall back to a single-visit spot so the panel and ring still work
+            this.setSelectedSpot(marker ? marker.spot : this.aggregateSpots([visit])[0]);
 
             const bounds = this.map.getBounds();
             const visitLatLng = L.latLng(visit.latitude, visit.longitude);
