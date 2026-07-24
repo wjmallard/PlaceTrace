@@ -111,7 +111,7 @@ def fetch_all_visits(conn):
     return visits
 
 
-def absorb_orphan_visits(conn, trips, home_locations):
+def absorb_orphan_visits(trips, trip_config):
     """
     Find single-visit 'trips' and merge them into adjacent trips.
     
@@ -172,20 +172,28 @@ def absorb_orphan_visits(conn, trips, home_locations):
             # Merge into trip before
             closest_before['visit_ids'].extend(orphan['visit_ids'])
             closest_before['location_ids'].extend(orphan['location_ids'])
-            closest_before['end_time'] = max(closest_before['end_time'], orphan['end_time'])
+            if orphan['end_time'] > closest_before['end_time']:
+                closest_before['end_time'] = orphan['end_time']
+                closest_before['local_end_date'] = orphan['local_end_date']
+                closest_before['local_end_time'] = orphan['local_end_time']
             closest_before['duration_hours'] = (closest_before['end_time'] - closest_before['start_time']).total_seconds() / 3600
+            closest_before['trip_category'] = categorize_trip(closest_before['duration_hours'], trip_config)
             print(f"  ✓ Merged orphan at {orphan_time.date()} into trip ending {closest_before['end_time'].date()} (gap: {gap_before_hours:.1f}h)")
             merged_count += 1
-            
+
         elif gap_after_hours < MAX_GAP_HOURS:
             # Merge into trip after
             closest_after['visit_ids'] = orphan['visit_ids'] + closest_after['visit_ids']
             closest_after['location_ids'] = orphan['location_ids'] + closest_after['location_ids']
-            closest_after['start_time'] = min(closest_after['start_time'], orphan['start_time'])
+            if orphan['start_time'] < closest_after['start_time']:
+                closest_after['start_time'] = orphan['start_time']
+                closest_after['local_start_date'] = orphan['local_start_date']
+                closest_after['local_start_time'] = orphan['local_start_time']
             closest_after['duration_hours'] = (closest_after['end_time'] - closest_after['start_time']).total_seconds() / 3600
+            closest_after['trip_category'] = categorize_trip(closest_after['duration_hours'], trip_config)
             print(f"  ✓ Merged orphan at {orphan_time.date()} into trip starting {closest_after['start_time'].date()} (gap: {gap_after_hours:.1f}h)")
             merged_count += 1
-            
+
         else:
             # Too isolated - discard
             print(f"  ⚠ Orphan at {orphan_time.date()} too isolated (gaps: {gap_before_hours:.1f}h before, {gap_after_hours:.1f}h after) - discarding")
@@ -446,7 +454,7 @@ def detect_trips(conn, visits, home_locations, work_locations, trip_config):
     print(f"✓ Detected {len(trips):,} trips")
     
     # Absorb orphan visits (single-visit glitches) into adjacent trips
-    trips = absorb_orphan_visits(conn, trips, home_locations)
+    trips = absorb_orphan_visits(trips, trip_config)
     
     print(f"✓ Final trip count: {len(trips):,} trips")
     
