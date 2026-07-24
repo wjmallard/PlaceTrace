@@ -130,6 +130,10 @@ function placeTraceApp() {
         showAllNearbyVisits: false,  // Default: show only selected day visits
         savedVisitState: null,   // Store visits to restore when showing all nearby
         
+        // Viewport-driven reload state
+        moveDebounce: null,     // Debounce timer for moveend refreshes
+        visitRequestSeq: 0,     // Discards out-of-order visit responses
+
         // Visit table panel state
         showVisitTable: false,
         visitTableData: [],
@@ -195,10 +199,12 @@ function placeTraceApp() {
             this.map.on('moveend', () => {
                 // Increment bounds version to trigger table direction updates
                 this.mapBoundsVersion++;
-                
+
                 // Only reload if no filters are active AND movement tracks are not active
                 if (!this.filterManager.tripId && !this.filterManager.spatial.lat && !this.filterManager.temporal.start && !this.showMovement) {
-                    this.loadRecentVisits();
+                    // Debounced background refresh: no loading overlay while panning/zooming
+                    clearTimeout(this.moveDebounce);
+                    this.moveDebounce = setTimeout(() => this.loadRecentVisits({ background: true }), 250);
                 }
             });
             
@@ -231,32 +237,43 @@ function placeTraceApp() {
         },
         
         // Load all visits (no date/limit filters)
-        async loadRecentVisits() {
-            this.loading = true;
-            
+        // background: true skips the loading overlay (viewport refreshes on pan/zoom)
+        async loadRecentVisits({ background = false } = {}) {
+            if (!background) {
+                this.loading = true;
+            }
+            const seq = ++this.visitRequestSeq;
+
             try {
                 // Build params using filterManager - include bbox only if no other spatial filter
-                const params = this.filterManager.buildParams({ 
+                const params = this.filterManager.buildParams({
                     includeBbox: !this.filterManager.spatial.lat && !this.filterManager.tripId && !this.filterManager.temporal.start && !this.showMovement,
-                    map: this.map 
+                    map: this.map
                 });
-                
+
                 const response = await fetch(`/api/visits?${params}`);
                 const data = await response.json();
-                
+
+                // A newer request superseded this one - discard the stale response
+                if (seq !== this.visitRequestSeq) {
+                    return;
+                }
+
                 this.visits = data.visits;
                 this.renderMarkers();
                 this.fitMapToVisits();
-                
+
                 // Reload table if visible
                 if (this.showVisitTable) {
                     await this.loadVisitTableData();
                 }
-                
+
             } catch (error) {
                 console.error('Error loading visits:', error);
             } finally {
-                this.loading = false;
+                if (!background) {
+                    this.loading = false;
+                }
             }
         },
         
