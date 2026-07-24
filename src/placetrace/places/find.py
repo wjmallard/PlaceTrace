@@ -55,14 +55,14 @@ def find_location_candidates(conn, start_date, end_date, min_hours=100):
 
 
 def format_location_json(place_id, lat, lon, name, start_date, end_date):
-    """Format as JSON for home_locations.json or work_locations.json"""
+    """Format as JSON for home_locations.json or work_locations.json (null = open-ended)"""
     return {
         "place_id": place_id,
         "lat": lat,
         "lon": lon,
         "name": name,
-        "start_date": start_date.isoformat() if isinstance(start_date, date) else start_date,
-        "end_date": end_date.isoformat() if isinstance(end_date, (date, datetime)) and end_date else "2099-12-31"
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
     }
 
 
@@ -105,16 +105,14 @@ def interactive_mode(location_type):
         try:
             end_str = input("  End date (or 'present'): ").strip()
             if end_str.lower() in ['present', 'now', '']:
-                end_date = date.today()
-                is_present = True
+                end_date = None  # Open-ended
             else:
                 end_date = parse_date(end_str)
-                is_present = False
             break
         except ValueError as e:
             print(f"  Error: {e}. Try again.")
-    
-    return start_date, end_date, is_present
+
+    return start_date, end_date
 
 
 def main():
@@ -139,30 +137,31 @@ def main():
     location_type = args.location_type
     config_file = project_root / "data" / f"{location_type}_locations.json"
 
-    # Get date range (from args or interactive)
+    # Get date range (from args or interactive); end_date None = open-ended
     if args.start_date and args.end_date:
         # Command line mode
         try:
             start_date = parse_date(args.start_date)
             if args.end_date.lower() in ['present', 'now']:
-                end_date = date.today()
-                is_present = True
+                end_date = None
             else:
                 end_date = parse_date(args.end_date)
-                is_present = False
         except ValueError as e:
             print(f"Error parsing dates: {e}")
             sys.exit(1)
     else:
         # Interactive mode
-        start_date, end_date, is_present = interactive_mode(location_type)
-    
-    if end_date < start_date:
+        start_date, end_date = interactive_mode(location_type)
+
+    # Candidates are searched up to today when the range is open-ended
+    search_end = end_date or date.today()
+
+    if search_end < start_date:
         print("\n✗ Error: End date must be after start date.")
         sys.exit(1)
-    
-    days = (end_date - start_date).days
-    print(f"\n📅 Searching {days} days: {start_date} to {end_date}")
+
+    days = (search_end - start_date).days
+    print(f"\n📅 Searching {days} days: {start_date} to {end_date or 'present'}")
     print()
     
     # Connect to database
@@ -171,7 +170,7 @@ def main():
     try:
         # Find candidates
         print("🔍 Finding candidate locations...")
-        candidates = find_location_candidates(conn, start_date, end_date, min_hours=100)
+        candidates = find_location_candidates(conn, start_date, search_end, min_hours=100)
         
         if not candidates:
             print("\n✗ No locations found with 100+ hours in this period.")
@@ -240,7 +239,7 @@ def main():
             selected['lon'],
             location_name,
             start_date,
-            end_date if not is_present else None
+            end_date
         )
         
         print("="*80)
@@ -267,7 +266,7 @@ def main():
             locations.append(location_entry)
             
             # Sort by start date
-            locations.sort(key=lambda h: h['start_date'])
+            locations.sort(key=lambda h: h['start_date'] or '')
             
             # Save
             with open(config_file, 'w') as f:

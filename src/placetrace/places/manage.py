@@ -8,45 +8,15 @@ Usage:
 """
 
 import argparse
-import json
-from datetime import date
 from collections import defaultdict
 
 from placetrace.db import get_location_name, get_main_connection
-from placetrace.config import project_root
 from placetrace.geo import haversine_km
-
-
-def load_locations(location_type):
-    """Load locations from JSON file"""
-    config_file = project_root / "data" / f"{location_type}_locations.json"
-    if config_file.exists():
-        with open(config_file, 'r') as f:
-            data = json.load(f)
-            # Convert date strings to date objects
-            locations = []
-            for loc in data:
-                loc['start_date'] = date.fromisoformat(loc['start_date']) if loc['start_date'] else None
-                loc['end_date'] = date.fromisoformat(loc['end_date']) if loc['end_date'] else None
-                locations.append(loc)
-            return locations
-    return []
-
-
-def save_locations(location_type, locations):
-    """Save locations to JSON file"""
-    config_file = project_root / "data" / f"{location_type}_locations.json"
-    
-    # Convert date objects to strings for JSON
-    data = []
-    for loc in locations:
-        loc_copy = loc.copy()
-        loc_copy['start_date'] = loc['start_date'].isoformat() if loc['start_date'] else None
-        loc_copy['end_date'] = loc['end_date'].isoformat() if loc['end_date'] else "2099-12-31"
-        data.append(loc_copy)
-    
-    with open(config_file, 'w') as f:
-        json.dump(data, f, indent=2)
+from placetrace.places.locations import (
+    load_locations,
+    ranges_overlap,
+    save_locations,
+)
 
 
 def find_continuous_periods(conn, monthly_data, min_months):
@@ -240,14 +210,7 @@ def review_and_save_detected(conn, location_type, detected_locations):
         # Check if this period overlaps with existing configured locations
         matching_config = None
         for existing in existing_locations:
-            # Check date overlap
-            existing_start = existing['start_date']
-            existing_end = existing['end_date'] if existing['end_date'] else date.max
-            detected_start = loc['start_date']
-            detected_end = loc['end_date']
-            
-            # Check if dates overlap
-            if not (detected_end < existing_start or detected_start > existing_end):
+            if ranges_overlap(loc, existing):
                 # Check if same location (within 1km)
                 if haversine_km(loc['lat'], loc['lon'], existing['lat'], existing['lon']) < 1:
                     matching_config = existing
@@ -309,14 +272,7 @@ def is_same_location_period(detected, existing):
     Check if detected location overlaps with existing configured location.
     Returns True if same location and overlapping time period.
     """
-    # Check date overlap
-    existing_start = existing['start_date']
-    existing_end = existing['end_date'] if existing['end_date'] else date.max
-    detected_start = detected['start_date']
-    detected_end = detected['end_date']
-
-    # No date overlap
-    if detected_end < existing_start or detected_start > existing_end:
+    if not ranges_overlap(detected, existing):
         return False
 
     # Check if same location (within 1km)
@@ -338,9 +294,10 @@ def list_locations(location_type):
     else:
         print()
         for i, loc in enumerate(locations, 1):
+            start_str = loc['start_date'].isoformat() if loc['start_date'] else 'beginning'
             end_str = loc['end_date'].isoformat() if loc['end_date'] else 'present'
             print(f"{i}. {loc['name']}")
-            print(f"   Period: {loc['start_date'].isoformat()} to {end_str}")
+            print(f"   Period: {start_str} to {end_str}")
             print(f"   Location: ({loc['lat']:.4f}, {loc['lon']:.4f})")
             if loc.get('place_id'):
                 print(f"   Place ID: {loc['place_id']}")

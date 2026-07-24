@@ -13,43 +13,19 @@ Requirements:
 """
 
 import argparse
-import json
 import traceback
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import timedelta
 from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
-from placetrace.config import TRIPS, project_root
+from placetrace.config import TRIPS
 from placetrace.geo import haversine_km
+from placetrace.places.locations import covers, load_locations
 
 HOME_RADIUS_KM = 20  # Within this distance of home counts as "at home"
 WORK_RADIUS_KM = 1   # Within this distance of work counts as "at work"
-
-
-def load_locations_json(filename):
-    """
-    Load home or work locations from JSON file.
-    Returns list of location dicts with parsed dates.
-    """
-    filepath = project_root / "data" / filename
-    
-    if not filepath.exists():
-        raise FileNotFoundError(
-            f"Required file not found: {filepath}\n"
-            f"Please create data/{filename} with location data."
-        )
-    
-    with open(filepath, 'r') as f:
-        locations = json.load(f)
-    
-    # Parse date strings to date objects
-    for loc in locations:
-        loc['start_date'] = datetime.strptime(loc['start_date'], '%Y-%m-%d').date()
-        loc['end_date'] = datetime.strptime(loc['end_date'], '%Y-%m-%d').date()
-    
-    return locations
 
 
 def get_place_at_date(places, date):
@@ -58,7 +34,7 @@ def get_place_at_date(places, date):
     Returns the location dict or None if none is defined for that date.
     """
     for place in places:
-        if place['start_date'] <= date <= place['end_date']:
+        if covers(place, date):
             return place
     return None
 
@@ -755,21 +731,23 @@ def main(argv=None):
     print("TRIP DETECTION (Activity-Aware)")
     print("="*60)
     
-    try:
-        # Load required configuration files
-        print("\nLoading configuration files...")
-        home_locations = load_locations_json('home_locations.json')
-        work_locations = load_locations_json('work_locations.json')
-        trip_config = TRIPS
-        
-        print(f"✓ Loaded {len(home_locations)} home locations")
-        print(f"✓ Loaded {len(work_locations)} work locations")
-        print(f"✓ Loaded {len(trip_config['categories'])} trip categories")
-        
-    except FileNotFoundError as e:
-        print(f"\n✗ {e}")
+    # Load required configuration files
+    print("\nLoading configuration files...")
+    home_locations = load_locations('home')
+    work_locations = load_locations('work')
+    trip_config = TRIPS
+
+    if not home_locations:
+        print("\n✗ No home locations configured (data/home_locations.json)")
+        print("   Without them every visit looks like a trip.")
+        print("   Run pt-find-places or pt-manage-places --detect home first.")
         sys.exit(1)
-    
+
+    print(f"✓ Loaded {len(home_locations)} home locations")
+    print(f"✓ Loaded {len(work_locations)} work locations")
+    print(f"✓ Loaded {len(trip_config['categories'])} trip categories")
+
+
     # Connect to database
     conn = get_main_connection()
 
