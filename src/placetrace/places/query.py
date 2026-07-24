@@ -1,24 +1,10 @@
-#!/usr/bin/env python3
 """
-Location History Query Tool
-Simple CLI for exploring your location history database
+pt-query — Explore your location history from the terminal.
 
-Usage:
-    python query_location.py [command] [args]
-
-Commands:
-    stats                          Show database statistics
-    nearby LAT LON [RADIUS_KM]     Find visits near a location
-    top [N]                        Show top N most visited places
-    when LAT LON [RADIUS_KM]       When were you at this location?
-    year YEAR                      Summarize a specific year
-    trips [YEAR]                   List trips (optionally filtered by year)
-    trip TRIP_ID                   Details about a specific trip
-    city CITY_NAME                 Show all visits to a city
+Run pt-query --help for the list of commands.
 """
 
-import sys
-from datetime import datetime
+import argparse
 
 from placetrace.db import get_main_connection
 
@@ -374,74 +360,58 @@ def city_visits(conn, city_name):
                 print(f"    Type: {row['semantic_type']}")
 
 
-def print_help():
-    print(__doc__)
-
-
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ['-h', '--help', 'help']:
-        print_help()
-        sys.exit(0)
-    
-    command = sys.argv[1]
+    parser = argparse.ArgumentParser(description="Explore your location history from the terminal.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("stats", help="show database statistics")
+
+    p = sub.add_parser("nearby", help="find visits near a location")
+    p.add_argument("lat", type=float)
+    p.add_argument("lon", type=float)
+    p.add_argument("radius_km", type=float, nargs="?", default=1.0)
+
+    p = sub.add_parser("top", help="show most visited places")
+    p.add_argument("n", type=int, nargs="?", default=10)
+
+    p = sub.add_parser("when", help="when were you at this location?")
+    p.add_argument("lat", type=float)
+    p.add_argument("lon", type=float)
+    p.add_argument("radius_km", type=float, nargs="?", default=0.1)
+
+    p = sub.add_parser("year", help="summarize a specific year")
+    p.add_argument("year", type=int)
+
+    p = sub.add_parser("trips", help="list trips, optionally filtered by year")
+    p.add_argument("year", type=int, nargs="?")
+
+    p = sub.add_parser("trip", help="details about a specific trip")
+    p.add_argument("trip_id", type=int)
+
+    p = sub.add_parser("city", help="show all visits to a city")
+    p.add_argument("city_name")
+
+    args = parser.parse_args()
+
     conn = get_main_connection()
-    
+
     try:
-        if command == 'stats':
+        if args.command == "stats":
             stats(conn)
-        
-        elif command == 'nearby':
-            if len(sys.argv) < 4:
-                print("Error: nearby requires LAT LON [RADIUS_KM]")
-                sys.exit(1)
-            lat = float(sys.argv[2])
-            lon = float(sys.argv[3])
-            radius = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
-            nearby(conn, lat, lon, radius)
-        
-        elif command == 'top':
-            limit = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-            top_places(conn, limit)
-        
-        elif command == 'when':
-            if len(sys.argv) < 4:
-                print("Error: when requires LAT LON [RADIUS_KM]")
-                sys.exit(1)
-            lat = float(sys.argv[2])
-            lon = float(sys.argv[3])
-            radius = float(sys.argv[4]) if len(sys.argv) > 4 else 0.1
-            when_at(conn, lat, lon, radius)
-        
-        elif command == 'year':
-            if len(sys.argv) < 3:
-                print("Error: year requires YEAR")
-                sys.exit(1)
-            year = int(sys.argv[2])
-            year_summary(conn, year)
-        
-        elif command == 'trips':
-            year = int(sys.argv[2]) if len(sys.argv) > 2 else None
-            list_trips(conn, year)
-        
-        elif command == 'trip':
-            if len(sys.argv) < 3:
-                print("Error: trip requires TRIP_ID")
-                sys.exit(1)
-            trip_id = int(sys.argv[2])
-            trip_details(conn, trip_id)
-        
-        elif command == 'city':
-            if len(sys.argv) < 3:
-                print("Error: city requires CITY_NAME")
-                sys.exit(1)
-            city_name = sys.argv[2]
-            city_visits(conn, city_name)
-        
-        else:
-            print(f"Unknown command: {command}")
-            print_help()
-            sys.exit(1)
-    
+        elif args.command == "nearby":
+            nearby(conn, args.lat, args.lon, args.radius_km)
+        elif args.command == "top":
+            top_places(conn, args.n)
+        elif args.command == "when":
+            when_at(conn, args.lat, args.lon, args.radius_km)
+        elif args.command == "year":
+            year_summary(conn, args.year)
+        elif args.command == "trips":
+            list_trips(conn, args.year)
+        elif args.command == "trip":
+            trip_details(conn, args.trip_id)
+        elif args.command == "city":
+            city_visits(conn, args.city_name)
     finally:
         conn.close()
 
