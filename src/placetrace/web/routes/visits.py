@@ -8,27 +8,9 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 
 from placetrace.web.database import get_db
-from placetrace.web.serialize import visit_dict
+from placetrace.web.serialize import VISIT_COLUMNS, visit_dict
 
 bp = Blueprint('visits', __name__)
-
-VISIT_COLUMNS = """
-    v.id,
-    v.start_time,
-    v.end_time,
-    v.duration_minutes,
-    v.local_start_date,
-    v.local_start_time,
-    v.local_end_date,
-    v.local_end_time,
-    ST_Y(v.location::geometry) AS latitude,
-    ST_X(v.location::geometry) AS longitude,
-    v.semantic_type,
-    l.city,
-    l.county,
-    l.state,
-    l.country
-"""
 
 
 @bp.route('/visits')

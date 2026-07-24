@@ -1,5 +1,24 @@
 """Row-to-JSON serializers shared by the API routes."""
 
+# Visit columns with joined location fields; expects aliases v (Visits) and l (Locations)
+VISIT_COLUMNS = """
+    v.id,
+    v.start_time,
+    v.end_time,
+    v.duration_minutes,
+    v.local_start_date,
+    v.local_start_time,
+    v.local_end_date,
+    v.local_end_time,
+    ST_Y(v.location::geometry) AS latitude,
+    ST_X(v.location::geometry) AS longitude,
+    v.semantic_type,
+    l.city,
+    l.county,
+    l.state,
+    l.country
+"""
+
 
 def format_location_name(row):
     """
