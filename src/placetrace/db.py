@@ -60,73 +60,69 @@ def geocode_point(lat, lon):
         }
         None: If no boundaries contain this point
     """
-    try:
-        conn = get_osm_connection()
-        
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT 
-                    name,
-                    name_en,
-                    admin_level,
-                    osm_id,
-                    ST_X(ST_Centroid(geom)) as centroid_lon,
-                    ST_Y(ST_Centroid(geom)) as centroid_lat
-                FROM admin_boundaries
-                WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                  AND admin_level IN (2, 4, 6, 8)
-                ORDER BY admin_level DESC
-            """, (lon, lat))
-            
-            results = cursor.fetchall()
-        
-        conn.close()
-        
-        if not results:
-            return None
-        
-        # Build hierarchy dictionary
-        location = {
-            'city': None,
-            'county': None,
-            'state': None,
-            'country': None,
-            'city_osm_id': None,
-            'county_osm_id': None,
-            'state_osm_id': None,
-            'country_osm_id': None,
-            'city_centroid': None,
-            'county_centroid': None,
-            'state_centroid': None,
-            'country_centroid': None,
-        }
-        
-        for r in results:
-            name = r['name_en'] or r['name']
-            osm_id = r['osm_id']
-            centroid = (r['centroid_lon'], r['centroid_lat'])
-            
-            if r['admin_level'] == 8:  # City
-                location['city'] = name
-                location['city_osm_id'] = osm_id
-                location['city_centroid'] = centroid
-            elif r['admin_level'] == 6:  # County
-                location['county'] = name
-                location['county_osm_id'] = osm_id
-                location['county_centroid'] = centroid
-            elif r['admin_level'] == 4:  # State
-                location['state'] = name
-                location['state_osm_id'] = osm_id
-                location['state_centroid'] = centroid
-            elif r['admin_level'] == 2:  # Country
-                location['country'] = name
-                location['country_osm_id'] = osm_id
-                location['country_centroid'] = centroid
-        
-        return location
-        
-    except Exception as e:
+    conn = get_osm_connection()
+
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT
+                name,
+                name_en,
+                admin_level,
+                osm_id,
+                ST_X(ST_Centroid(geom)) as centroid_lon,
+                ST_Y(ST_Centroid(geom)) as centroid_lat
+            FROM admin_boundaries
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+              AND admin_level IN (2, 4, 6, 8)
+            ORDER BY admin_level DESC
+        """, (lon, lat))
+
+        results = cursor.fetchall()
+
+    conn.close()
+
+    if not results:
         return None
+
+    # Build hierarchy dictionary
+    location = {
+        'city': None,
+        'county': None,
+        'state': None,
+        'country': None,
+        'city_osm_id': None,
+        'county_osm_id': None,
+        'state_osm_id': None,
+        'country_osm_id': None,
+        'city_centroid': None,
+        'county_centroid': None,
+        'state_centroid': None,
+        'country_centroid': None,
+    }
+
+    for r in results:
+        name = r['name_en'] or r['name']
+        osm_id = r['osm_id']
+        centroid = (r['centroid_lon'], r['centroid_lat'])
+
+        if r['admin_level'] == 8:  # City
+            location['city'] = name
+            location['city_osm_id'] = osm_id
+            location['city_centroid'] = centroid
+        elif r['admin_level'] == 6:  # County
+            location['county'] = name
+            location['county_osm_id'] = osm_id
+            location['county_centroid'] = centroid
+        elif r['admin_level'] == 4:  # State
+            location['state'] = name
+            location['state_osm_id'] = osm_id
+            location['state_centroid'] = centroid
+        elif r['admin_level'] == 2:  # Country
+            location['country'] = name
+            location['country_osm_id'] = osm_id
+            location['country_centroid'] = centroid
+
+    return location
 
 # ============================================================================
 # Location Table Operations

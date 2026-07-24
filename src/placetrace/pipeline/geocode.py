@@ -29,12 +29,7 @@ def worker_geocode(lat_lon):
     Returns (lat, lon, location_info) tuple.
     """
     lat, lon = lat_lon
-    try:
-        location_info = geocode_point(lat, lon)
-        return (lat, lon, location_info)
-    except Exception as e:
-        # Return None for location_info on error
-        return (lat, lon, None)
+    return (lat, lon, geocode_point(lat, lon))
 
 
 def get_unique_coordinates(conn):
