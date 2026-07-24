@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Database configuration and operations for PlaceTrace
 Handles connections to both main database and OSM boundaries database
