@@ -35,3 +35,5 @@ TRIPS = _config["trips"]
 TRIP_CATEGORIES = _config["trips"]["categories"]
 
 NUM_WORKERS = _config["processing"].get("num_workers", 4)
+
+MAP = _config["map"]

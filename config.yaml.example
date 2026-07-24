@@ -36,9 +36,10 @@ processing:
 
 # Map Display Settings
 map:
-  height: 1200
-  default_zoom: 12
-  default_date_range_days: 7  # Default number of days to show
+  default_center:                   # Where the map opens before any data loads
+    lat: 37.7749
+    lon: -122.4194
+  default_zoom: 10
   tiles:
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
-    attribution: 'Esri'
+    attribution: 'Tiles &copy; Esri'

@@ -435,6 +435,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
+    <!-- Map settings from config.yaml -->
+    <script>window.PLACETRACE_CONFIG = {{ map_config | tojson }};</script>
+
     <!-- App JS -->
     <script src="/static/js/app.js"></script>
 </body>

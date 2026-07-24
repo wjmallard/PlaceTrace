@@ -5,6 +5,8 @@ Serves the map explorer UI
 
 from flask import Blueprint, render_template
 
+from placetrace.config import MAP
+
 # Create blueprint with template and static folders
 bp = Blueprint('frontend', __name__,
                template_folder='../templates',
@@ -15,4 +17,4 @@ bp = Blueprint('frontend', __name__,
 @bp.route('/')
 def index():
     """Serve the main map explorer page"""
-    return render_template('index.html')
+    return render_template('index.html', map_config=MAP)

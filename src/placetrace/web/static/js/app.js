@@ -152,14 +152,20 @@ function placeTraceApp() {
         
         // Initialize Leaflet map
         initMap() {
-            // Create map centered on Palo Alto (disable scroll wheel zoom during init)
+            // Map settings injected by the template from config.yaml
+            const mapConfig = window.PLACETRACE_CONFIG;
+
+            // Create map at the configured center (disable scroll wheel zoom during init)
             this.map = L.map('map', {
                 scrollWheelZoom: false
-            }).setView([37.4419, -122.1430], 10);
-            
-            // Add Esri World Street Map tiles
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri',
+            }).setView(
+                [mapConfig.default_center.lat, mapConfig.default_center.lon],
+                mapConfig.default_zoom
+            );
+
+            // Add base map tiles
+            L.tileLayer(mapConfig.tiles.url, {
+                attribution: mapConfig.tiles.attribution,
                 maxZoom: 19
             }).addTo(this.map);
             
