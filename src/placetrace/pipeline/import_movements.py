@@ -20,32 +20,18 @@ Usage:
 
 import orjson
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import timedelta
 from tqdm import tqdm
 import sys
 
 from placetrace.db import get_main_connection
 from placetrace.config import config
-
-
-def parse_timestamp(timestamp_str):
-    """
-    Parse Google Timeline timestamp string to datetime with timezone.
-    Example: '2024-05-18T06:09:05.023+02:00'
-    """
-    return datetime.fromisoformat(timestamp_str)
-
-
-def extract_local_date_time(timestamp_str):
-    """
-    Extract local date and time from timezone-aware timestamp string.
-    Returns (date, time) tuple representing wall-clock values.
-    
-    Example:
-        "2024-05-18T07:54:00.030+02:00" -> (date(2024, 5, 18), time(7, 54, 0, 30000))
-    """
-    dt = datetime.fromisoformat(timestamp_str)
-    return dt.date(), dt.time()
+from placetrace.pipeline.parse import (
+    local_date_time,
+    parse_geo_point,
+    parse_latlng_e7,
+    parse_timestamp,
+)
 
 
 def extract_start_end_local_times(start_time_str, end_time_str):
@@ -53,42 +39,9 @@ def extract_start_end_local_times(start_time_str, end_time_str):
     Extract local date/time for both start and end timestamps.
     Returns (start_date, start_time, end_date, end_time) tuple.
     """
-    local_start_date, local_start_time = extract_local_date_time(start_time_str)
-    local_end_date, local_end_time = extract_local_date_time(end_time_str)
+    local_start_date, local_start_time = local_date_time(start_time_str)
+    local_end_date, local_end_time = local_date_time(end_time_str)
     return local_start_date, local_start_time, local_end_date, local_end_time
-
-
-def parse_geo_point(geo_str):
-    """
-    Parse 'geo:lat,lon' string to (lat, lon) tuple.
-    Example: 'geo:48.636104,-1.511244' -> (48.636104, -1.511244)
-    """
-    if not geo_str or not geo_str.startswith('geo:'):
-        return None
-    
-    coords = geo_str[4:].split(',')
-    if len(coords) != 2:
-        return None
-    
-    try:
-        lat = float(coords[0])
-        lon = float(coords[1])
-        return (lat, lon)
-    except ValueError:
-        return None
-
-
-def parse_latlng_e7(point_dict):
-    """
-    Parse latE7/lngE7 format (integer degrees * 1e7) to (lat, lon) tuple.
-    Example: {'latE7': 486361040, 'lngE7': -15112440} -> (48.6361040, -1.5112440)
-    """
-    if 'latE7' not in point_dict or 'lngE7' not in point_dict:
-        return None
-    
-    lat = point_dict['latE7'] / 1e7
-    lon = point_dict['lngE7'] / 1e7
-    return (lat, lon)
 
 
 def extract_route_geometry(activity):
