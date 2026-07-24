@@ -206,7 +206,8 @@ function placeTraceApp() {
         async loadTrips() {
             try {
                 const params = new URLSearchParams();
-                
+                params.append('limit', 1000);  // API default is 100, which would truncate the sidebar
+
                 // Add date range filter if active
                 if (this.filterManager.temporal.start) {
                     params.append('start_date', this.filterManager.temporal.start);
