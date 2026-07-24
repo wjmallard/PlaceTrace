@@ -87,73 +87,50 @@ def find_adjacent_visit(conn, activity_time, location, is_start):
     """
     Find visit that temporally and spatially matches an activity endpoint.
     Uses PostGIS ST_DWithin for efficient spatial filtering.
+    For an activity start, match the visit that ended just before it;
+    for an activity end, match the visit that started just after it.
     """
     if not location:
         return None
-    
+
     lat, lon = location
     cursor = conn.cursor()
-    
+
     # Time window: 5 minutes before/after activity
     time_buffer = timedelta(minutes=5)
-    
-    if is_start:
-        # Visit that ended just before activity started
-        cursor.execute("""
-            SELECT id,
-                   ST_Distance(
-                       location,
-                       ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-                   ) as distance_m
-            FROM Visits
-            WHERE end_time BETWEEN %s AND %s
-              AND ST_DWithin(
-                  location,
-                  ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                  500  -- 500m radius
-              )
-            ORDER BY ABS(EXTRACT(EPOCH FROM (end_time - %s))), distance_m
-            LIMIT 1
-        """, (
-            lon, lat,  # Point for distance calculation
-            activity_time - time_buffer,
-            activity_time + time_buffer,
-            lon, lat,  # Point for ST_DWithin
-            activity_time
-        ))
-    else:
-        # Visit that started just after activity ended
-        cursor.execute("""
-            SELECT id,
-                   ST_Distance(
-                       location,
-                       ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-                   ) as distance_m
-            FROM Visits
-            WHERE start_time BETWEEN %s AND %s
-              AND ST_DWithin(
-                  location,
-                  ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                  500
-              )
-            ORDER BY ABS(EXTRACT(EPOCH FROM (start_time - %s))), distance_m
-            LIMIT 1
-        """, (
-            lon, lat,
-            activity_time - time_buffer,
-            activity_time + time_buffer,
-            lon, lat,
-            activity_time
-        ))
-    
+    time_column = 'end_time' if is_start else 'start_time'
+
+    cursor.execute(f"""
+        SELECT id,
+               ST_Distance(
+                   location,
+                   ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+               ) as distance_m
+        FROM Visits
+        WHERE {time_column} BETWEEN %s AND %s
+          AND ST_DWithin(
+              location,
+              ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+              500  -- 500m radius
+          )
+        ORDER BY ABS(EXTRACT(EPOCH FROM ({time_column} - %s))), distance_m
+        LIMIT 1
+    """, (
+        lon, lat,  # Point for distance calculation
+        activity_time - time_buffer,
+        activity_time + time_buffer,
+        lon, lat,  # Point for ST_DWithin
+        activity_time
+    ))
+
     result = cursor.fetchone()
     cursor.close()
-    
+
     if result:
         if result['distance_m'] > 1000:
             print(f"  ⚠ Activity {'start' if is_start else 'end'} location {result['distance_m']:.0f}m from visit")
         return result['id']
-    
+
     return None
 
 
