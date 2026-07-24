@@ -17,72 +17,12 @@ Usage:
 """
 
 import orjson
-from datetime import datetime, timezone, timedelta
 from tqdm import tqdm
 import sys
-import re
 
 from placetrace.db import get_main_connection
 from placetrace.config import config
-
-
-def parse_geo_string(geo_str):
-    """Parse 'geo:lat,lon' format into (lat, lon) tuple."""
-    coords = geo_str.replace('geo:', '').split(',')
-    return float(coords[0]), float(coords[1])
-
-
-def extract_timezone_offset(timestamp_str):
-    """
-    Extract timezone offset from ISO 8601 timestamp string.
-    Returns a timezone object representing the offset.
-    
-    Examples:
-        "2024-05-18T07:54:00.030+02:00" -> UTC+02:00
-        "2024-05-18T05:54:00.030Z" -> UTC
-    """
-    # Handle 'Z' suffix (UTC)
-    if timestamp_str.endswith('Z'):
-        return timezone.utc
-    
-    # Extract offset pattern: +HH:MM or -HH:MM
-    match = re.search(r'([+-])(\d{2}):(\d{2})$', timestamp_str)
-    if match:
-        sign = 1 if match.group(1) == '+' else -1
-        hours = int(match.group(2))
-        minutes = int(match.group(3))
-        offset_seconds = sign * (hours * 3600 + minutes * 60)
-        return timezone(timedelta(seconds=offset_seconds))
-    
-    # Fallback to UTC if we can't parse the offset
-    return timezone.utc
-
-
-def parse_timestamp(ts_str):
-    """Parse Google Timeline timestamp to datetime, convert to UTC"""
-    dt = datetime.fromisoformat(ts_str.replace('Z', '+00:00'))
-    # Convert to UTC explicitly before passing to database
-    return dt.astimezone(timezone.utc)
-
-
-def extract_local_date_time(timestamp_str):
-    """
-    Extract local date and time from timezone-aware timestamp string.
-    Returns (date, time) tuple representing wall-clock values.
-    
-    Example:
-        "2024-05-18T07:54:00.030+02:00" -> (date(2024, 5, 18), time(7, 54, 0, 30000))
-    """
-    # Parse with timezone info preserved
-    dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-    
-    # Extract the offset from original string
-    tz_offset = extract_timezone_offset(timestamp_str)
-    
-    # Convert to local time using the offset
-    local_dt = dt.astimezone(tz_offset)
-    
-    return local_dt.date(), local_dt.time()
+from placetrace.pipeline.parse import local_date_time, parse_geo_point, parse_timestamp
 
 
 def get_existing_visits(conn):
@@ -153,19 +93,19 @@ def import_visits(conn, json_path):
             end_time = parse_timestamp(end_time_str)
             
             # Extract local date and time from original timezone-aware strings
-            local_start_date, local_start_time = extract_local_date_time(start_time_str)
-            local_end_date, local_end_time = extract_local_date_time(end_time_str)
-            
+            local_start_date, local_start_time = local_date_time(start_time_str)
+            local_end_date, local_end_time = local_date_time(end_time_str)
+
             # Calculate duration in minutes (minimum 1 minute)
             duration_minutes = max(1, round((end_time - start_time).total_seconds() / 60))
-            
-            # Parse location using original parse_geo_string function
-            try:
-                lat, lon = parse_geo_string(top_candidate['placeLocation'])
-            except (KeyError, ValueError):
+
+            point = parse_geo_point(top_candidate.get('placeLocation'))
+            if not point:
                 skipped += 1
                 continue
-            
+            lat, lon = point
+
+
             # Round coordinates to 6 decimals for comparison (same as database)
             lat_rounded = round(lat, 6)
             lon_rounded = round(lon, 6)
