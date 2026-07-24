@@ -2,6 +2,15 @@
 
 Personal location history explorer built on PostGIS. Imports Google Timeline data, reverse-geocodes against a local OSM database, detects trips, and serves an interactive web UI for browsing your location history.
 
+![Spot map with clustered visit counts and a selected spot](docs/map.png)
+
+<table>
+  <tr>
+    <td><img src="docs/tracks.png" alt="Day tracks view with color-coded activity routes"></td>
+    <td><img src="docs/trips.png" alt="Trip explorer with a selected trip fitted on the map"></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Ingestion pipeline** — imports visits, movements, and activity data from Google Takeout JSON, with resume support and progress tracking
