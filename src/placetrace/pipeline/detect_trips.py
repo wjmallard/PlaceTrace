@@ -87,11 +87,15 @@ def fetch_all_visits(conn):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             id,
             start_time,
             end_time,
             duration_minutes,
+            local_start_date,
+            local_start_time,
+            local_end_date,
+            local_end_time,
             ST_Y(location::geometry) as lat,
             ST_X(location::geometry) as lon,
             location_id,
@@ -511,12 +515,13 @@ def finalize_trip(conn, trip_visits, home_locations, trip_config):
     if trip_category is None:
         return None  # Too short to be a trip
     
-    # Extract local date/time from start and end timestamps
-    local_start_date = start_time.date()
-    local_start_time = start_time.time()
-    local_end_date = end_time.date()
-    local_end_time = end_time.time()
-    
+    # Local wall-clock bounds come from the first/last visit
+    # (start_time/end_time are UTC, so their date/time parts are not local)
+    local_start_date = trip_visits[0]['local_start_date']
+    local_start_time = trip_visits[0]['local_start_time']
+    local_end_date = trip_visits[-1]['local_end_date']
+    local_end_time = trip_visits[-1]['local_end_time']
+
     return {
         'start_time': start_time,
         'end_time': end_time,
