@@ -370,8 +370,6 @@ def should_split_trip(conn, prev_visit, current_visit, home_locations, trip_conf
     
     # Long gap or gap near home - split trip
     return True
-    # Long gap or gap near home - split trip
-    return True
 
 
 def detect_trips(conn, visits, home_locations, work_locations, trip_config):
