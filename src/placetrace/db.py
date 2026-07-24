@@ -10,6 +10,14 @@ from psycopg.rows import dict_row
 
 from placetrace.config import config
 
+# OSM admin_level -> location field, most specific first
+ADMIN_LEVELS = {
+    8: 'city',
+    6: 'county',
+    4: 'state',
+    2: 'country',
+}
+
 # ============================================================================
 # Database Connections
 # ============================================================================
@@ -85,42 +93,19 @@ def geocode_point(lat, lon):
         return None
 
     # Build hierarchy dictionary
-    location = {
-        'city': None,
-        'county': None,
-        'state': None,
-        'country': None,
-        'city_osm_id': None,
-        'county_osm_id': None,
-        'state_osm_id': None,
-        'country_osm_id': None,
-        'city_centroid': None,
-        'county_centroid': None,
-        'state_centroid': None,
-        'country_centroid': None,
-    }
+    location = {}
+    for field in ADMIN_LEVELS.values():
+        location[field] = None
+        location[f'{field}_osm_id'] = None
+        location[f'{field}_centroid'] = None
 
     for r in results:
-        name = r['name_en'] or r['name']
-        osm_id = r['osm_id']
-        centroid = (r['centroid_lon'], r['centroid_lat'])
-
-        if r['admin_level'] == 8:  # City
-            location['city'] = name
-            location['city_osm_id'] = osm_id
-            location['city_centroid'] = centroid
-        elif r['admin_level'] == 6:  # County
-            location['county'] = name
-            location['county_osm_id'] = osm_id
-            location['county_centroid'] = centroid
-        elif r['admin_level'] == 4:  # State
-            location['state'] = name
-            location['state_osm_id'] = osm_id
-            location['state_centroid'] = centroid
-        elif r['admin_level'] == 2:  # Country
-            location['country'] = name
-            location['country_osm_id'] = osm_id
-            location['country_centroid'] = centroid
+        field = ADMIN_LEVELS.get(r['admin_level'])
+        if not field:
+            continue
+        location[field] = r['name_en'] or r['name']
+        location[f'{field}_osm_id'] = r['osm_id']
+        location[f'{field}_centroid'] = (r['centroid_lon'], r['centroid_lat'])
 
     return location
 
@@ -147,24 +132,13 @@ def get_or_create_location(conn, location_info):
     """
     if not location_info or not location_info.get('country'):
         return None  # Must at least have country
-    
-    # Determine which admin level to use as primary
-    # Prefer: city > county > state > country
-    primary_centroid = (location_info['city_centroid'] or 
-                       location_info['county_centroid'] or 
-                       location_info['state_centroid'] or 
-                       location_info['country_centroid'])
-    
-    # Determine admin_level
-    if location_info['city']:
-        admin_level = 8
-    elif location_info['county']:
-        admin_level = 6
-    elif location_info['state']:
-        admin_level = 4
-    else:
-        admin_level = 2
-    
+
+    # Primary level is the most specific one present (city > county > state > country)
+    for admin_level, field in ADMIN_LEVELS.items():
+        if location_info[field]:
+            primary_centroid = location_info[f'{field}_centroid']
+            break
+
     with conn.cursor() as cursor:
         # Check if location exists
         # Use IS NOT DISTINCT FROM for NULL-safe comparison
