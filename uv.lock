@@ -137,11 +137,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "flask", specifier = ">=3.0" },
-    { name = "orjson", specifier = ">=3.9" },
-    { name = "psycopg", specifier = ">=3.2" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "tqdm", specifier = ">=4.66" },
+    { name = "flask", specifier = ">=3.1.3" },
+    { name = "orjson", specifier = ">=3.11.9" },
+    { name = "psycopg", specifier = ">=3.3.4" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "tqdm", specifier = ">=4.69.1" },
 ]
 
 [[package]]
