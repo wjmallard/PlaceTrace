@@ -119,9 +119,12 @@ def geocode_and_update(conn, coord_to_visit_ids):
                     if visit_ids:
                         cursor.execute("""
                             UPDATE Visits
-                            SET location_id = %s
-                            WHERE id = ANY(%s)
-                        """, (location_id, visit_ids))
+                            SET location_id = %(location_id)s
+                            WHERE id = ANY(%(visit_ids)s)
+                        """, {
+                            'location_id': location_id,
+                            'visit_ids': visit_ids,
+                        })
                         geocoded_visits += len(visit_ids)
 
                     # Commit after each coordinate (ensures progress is saved)

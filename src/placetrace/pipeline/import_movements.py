@@ -97,27 +97,28 @@ def find_adjacent_visit(conn, activity_time, location, is_start):
     time_column = 'end_time' if is_start else 'start_time'
 
     cursor.execute(f"""
-        SELECT id,
-               ST_Distance(
-                   location,
-                   ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-               ) as distance_m
+        SELECT
+            id,
+            ST_Distance(
+                location,
+                ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography
+            ) as distance_m
         FROM Visits
-        WHERE {time_column} BETWEEN %s AND %s
+        WHERE {time_column} BETWEEN %(window_start)s AND %(window_end)s
           AND ST_DWithin(
               location,
-              ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+              ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography,
               500  -- 500m radius
           )
-        ORDER BY ABS(EXTRACT(EPOCH FROM ({time_column} - %s))), distance_m
+        ORDER BY ABS(EXTRACT(EPOCH FROM ({time_column} - %(activity_time)s))), distance_m
         LIMIT 1
-    """, (
-        lon, lat,  # Point for distance calculation
-        activity_time - time_buffer,
-        activity_time + time_buffer,
-        lon, lat,  # Point for ST_DWithin
-        activity_time
-    ))
+    """, {
+        'lat': lat,
+        'lon': lon,
+        'window_start': activity_time - time_buffer,
+        'window_end': activity_time + time_buffer,
+        'activity_time': activity_time,
+    })
 
     result = cursor.fetchone()
     cursor.close()
@@ -416,35 +417,47 @@ def import_movements_to_database(conn, movements, force=False):
                     preceding_visit_id,
                     following_visit_id
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s,
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                    ST_GeomFromText(%s, 4326)::geography,
-                    %s, %s, %s,
-                    %s, %s,
-                    %s,
-                    %s, %s
+                    %(start_time)s,
+                    %(end_time)s,
+                    %(duration_minutes)s,
+                    %(local_start_date)s,
+                    %(local_start_time)s,
+                    %(local_end_date)s,
+                    %(local_end_time)s,
+                    ST_SetSRID(ST_MakePoint(%(start_lon)s, %(start_lat)s), 4326)::geography,
+                    ST_SetSRID(ST_MakePoint(%(end_lon)s, %(end_lat)s), 4326)::geography,
+                    ST_GeomFromText(%(route_geometry)s, 4326)::geography,
+                    %(activity_type)s,
+                    %(confidence)s,
+                    %(distance_meters)s,
+                    %(source)s,
+                    %(movement_type)s,
+                    %(source_metadata)s,
+                    %(preceding_visit_id)s,
+                    %(following_visit_id)s
                 )
-            """, (
-                movement['start_time'],
-                movement['end_time'],
-                movement['duration_minutes'],
-                movement['local_start_date'],
-                movement['local_start_time'],
-                movement['local_end_date'],
-                movement['local_end_time'],
-                start_lon, start_lat,  # PostGIS uses lon,lat order
-                end_lon, end_lat,
-                movement['route_geometry'],
-                movement['activity_type'],
-                movement['confidence'],
-                movement['distance_meters'],
-                movement['source'],
-                movement['movement_type'],
-                source_metadata_json,
-                preceding_visit_id,
-                following_visit_id
-            ))
+            """, {
+                'start_time': movement['start_time'],
+                'end_time': movement['end_time'],
+                'duration_minutes': movement['duration_minutes'],
+                'local_start_date': movement['local_start_date'],
+                'local_start_time': movement['local_start_time'],
+                'local_end_date': movement['local_end_date'],
+                'local_end_time': movement['local_end_time'],
+                'start_lat': start_lat,
+                'start_lon': start_lon,
+                'end_lat': end_lat,
+                'end_lon': end_lon,
+                'route_geometry': movement['route_geometry'],
+                'activity_type': movement['activity_type'],
+                'confidence': movement['confidence'],
+                'distance_meters': movement['distance_meters'],
+                'source': movement['source'],
+                'movement_type': movement['movement_type'],
+                'source_metadata': source_metadata_json,
+                'preceding_visit_id': preceding_visit_id,
+                'following_visit_id': following_visit_id,
+            })
             
             imported_count += 1
             

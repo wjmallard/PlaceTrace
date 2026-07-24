@@ -131,31 +131,32 @@ def import_visits(conn, json_path):
                     semantic_type,
                     place_id
                 ) VALUES (
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    %(start_time)s,
+                    %(end_time)s,
+                    %(duration_minutes)s,
+                    %(local_start_date)s,
+                    %(local_start_time)s,
+                    %(local_end_date)s,
+                    %(local_end_time)s,
+                    ST_SetSRID(ST_MakePoint(%(lon)s, %(lat)s), 4326)::geography,
                     NULL,
                     'timeline',
-                    %s,
-                    %s
+                    %(semantic_type)s,
+                    %(place_id)s
                 )
-            """, (
-                start_time,
-                end_time,
-                duration_minutes,
-                local_start_date,
-                local_start_time,
-                local_end_date,
-                local_end_time,
-                lon, lat,  # PostGIS uses lon, lat order
-                semantic_type,
-                place_id
-            ))
+            """, {
+                'start_time': start_time,
+                'end_time': end_time,
+                'duration_minutes': duration_minutes,
+                'local_start_date': local_start_date,
+                'local_start_time': local_start_time,
+                'local_end_date': local_end_date,
+                'local_end_time': local_end_time,
+                'lat': lat,
+                'lon': lon,
+                'semantic_type': semantic_type,
+                'place_id': place_id,
+            })
             imported += 1
 
             # Commit every 100 visits

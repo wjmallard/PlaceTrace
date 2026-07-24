@@ -229,22 +229,22 @@ def get_activity_between_visits(conn, prev_visit_end, current_visit_start):
     # Look for movement that starts near prev_visit end time
     # and ends near current_visit start time
     cursor.execute("""
-        SELECT 
+        SELECT
             id,
             activity_type,
             distance_meters,
             duration_minutes
         FROM Movements
-        WHERE start_time BETWEEN %s AND %s
-          AND end_time BETWEEN %s AND %s
+        WHERE start_time BETWEEN %(start_from)s AND %(start_to)s
+          AND end_time BETWEEN %(end_from)s AND %(end_to)s
         ORDER BY start_time
         LIMIT 1
-    """, (
-        prev_visit_end - timedelta(minutes=5),
-        prev_visit_end + timedelta(minutes=5),
-        current_visit_start - timedelta(minutes=5),
-        current_visit_start + timedelta(minutes=5)
-    ))
+    """, {
+        'start_from': prev_visit_end - timedelta(minutes=5),
+        'start_to': prev_visit_end + timedelta(minutes=5),
+        'end_from': current_visit_start - timedelta(minutes=5),
+        'end_to': current_visit_start + timedelta(minutes=5),
+    })
     
     result = cursor.fetchone()
     cursor.close()
@@ -480,7 +480,7 @@ def get_locations_for_trip(conn, location_ids):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT 
+        SELECT
             id,
             city,
             county,
@@ -488,8 +488,10 @@ def get_locations_for_trip(conn, location_ids):
             country,
             admin_level
         FROM Locations
-        WHERE id = ANY(%s)
-    """, (location_ids,))
+        WHERE id = ANY(%(location_ids)s)
+    """, {
+        'location_ids': location_ids,
+    })
     
     locations = cursor.fetchall()
     cursor.close()
@@ -549,10 +551,12 @@ def get_cities_for_trip(conn, location_ids):
     cursor.execute("""
         SELECT DISTINCT city
         FROM Locations
-        WHERE id = ANY(%s)
+        WHERE id = ANY(%(location_ids)s)
           AND city IS NOT NULL
         ORDER BY city
-    """, (location_ids,))
+    """, {
+        'location_ids': location_ids,
+    })
     
     cities = [row['city'] for row in cursor.fetchall()]
     cursor.close()
@@ -605,21 +609,32 @@ def insert_trips_to_database(conn, trips):
                     cities,
                     primary_location_id,
                     display_name
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (
+                    %(start_time)s,
+                    %(end_time)s,
+                    %(local_start_date)s,
+                    %(local_start_time)s,
+                    %(local_end_date)s,
+                    %(local_end_time)s,
+                    %(trip_category)s,
+                    %(cities)s,
+                    %(primary_location_id)s,
+                    %(display_name)s
+                )
                 ON CONFLICT (start_time, end_time) DO NOTHING
                 RETURNING id
-            """, (
-                trip['start_time'],
-                trip['end_time'],
-                trip['local_start_date'],
-                trip['local_start_time'],
-                trip['local_end_date'],
-                trip['local_end_time'],
-                trip['trip_category'],
-                cities,
-                primary_location_id,
-                display_name
-            ))
+            """, {
+                'start_time': trip['start_time'],
+                'end_time': trip['end_time'],
+                'local_start_date': trip['local_start_date'],
+                'local_start_time': trip['local_start_time'],
+                'local_end_date': trip['local_end_date'],
+                'local_end_time': trip['local_end_time'],
+                'trip_category': trip['trip_category'],
+                'cities': cities,
+                'primary_location_id': primary_location_id,
+                'display_name': display_name,
+            })
             
             result = cursor.fetchone()
             if not result:
@@ -632,9 +647,12 @@ def insert_trips_to_database(conn, trips):
             for visit_id in trip['visit_ids']:
                 cursor.execute("""
                     INSERT INTO Trip_Visits (trip_id, visit_id)
-                    VALUES (%s, %s)
+                    VALUES (%(trip_id)s, %(visit_id)s)
                     ON CONFLICT DO NOTHING
-                """, (trip_id, visit_id))
+                """, {
+                    'trip_id': trip_id,
+                    'visit_id': visit_id,
+                })
             
             # Commit every 100 trips
             if inserted % 100 == 0:
