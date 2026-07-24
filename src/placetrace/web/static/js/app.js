@@ -63,9 +63,7 @@ function placeTraceApp() {
             spatial: { lat: null, lon: null, radius_km: 10 },
             temporal: { start: null, end: null },
             tripId: null,
-            semanticType: null,
-            search: null,
-            
+
             // Build URLSearchParams from current filter state
             buildParams(options = {}) {
                 const params = new URLSearchParams();
@@ -96,17 +94,7 @@ function placeTraceApp() {
                     params.append('trip_id', this.tripId);
                     params.append('limit', 5000);
                 }
-                
-                // Semantic type filter
-                if (this.semanticType) {
-                    params.append('semantic_type', this.semanticType);
-                }
-                
-                // Search filter
-                if (this.search) {
-                    params.append('search', this.search);
-                }
-                
+
                 return params;
             },
             
@@ -127,18 +115,13 @@ function placeTraceApp() {
                 this.spatial = { lat: null, lon: null, radius_km: 10 };
                 this.temporal = { start: null, end: null };
                 this.tripId = null;
-                this.semanticType = null;
-                this.search = null;
             }
         },
         
         // UI state for date inputs
         startDate: '',
         endDate: '',
-        showRadiusSection: false,
-        showDateFilter: false,
         expandedYears: {},
-        showMovementSection: false,
         showTripsSection: false,  // Default collapsed
         selectedDay: null,
         showMovement: false,
@@ -378,11 +361,6 @@ function placeTraceApp() {
             });
         },
         
-        // Render visits (wrapper for renderMarkers for clarity)
-        renderVisits() {
-            this.renderMarkers();
-        },
-        
         // Fit map bounds to show all visits
         fitMapToVisits() {
             if (this.visits.length === 0) return;
@@ -535,7 +513,7 @@ function placeTraceApp() {
         
         // Update radius circle when slider changes
         updateRadiusCircle() {
-            // If spatial filter is active, update the circle and filter chip
+            // If spatial filter is active, update the circle
             if (this.filterManager.spatial.lat !== null) {
                 // Update circle radius
                 if (this.spatialFilterCircle) {
@@ -712,22 +690,6 @@ function placeTraceApp() {
             this.loadRecentVisits();
         },
         
-        // Format date for filter chip (short format)
-        formatDateShort(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        },
-        
-        // Get emoji for trip category
-        getTripEmoji(category) {
-            const emojis = {
-                'Day Trip': '🚗',
-                'Short Trip': '✈️',
-                'Long Trip': '🌍'
-            };
-            return emojis[category] || '🧳';
-        },
-        
         // Format date range for trip display
         formatDateRange(startTime, endTime) {
             const start = new Date(startTime);
@@ -847,7 +809,7 @@ function placeTraceApp() {
                 // If NOT showing all nearby, update main markers to show only this day
                 if (!this.showAllNearbyVisits) {
                     this.visits = dayVisits;
-                    this.renderVisits();
+                    this.renderMarkers();
                 }
                 
             } catch (error) {
