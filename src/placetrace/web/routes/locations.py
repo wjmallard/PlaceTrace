@@ -3,10 +3,10 @@ Locations API endpoint
 GET /api/locations - List locations with filtering
 """
 
-from flask import Blueprint, request, jsonify, current_app
-from sqlalchemy import func
-from placetrace.web.models import Location, Visit
-from placetrace.web.database import db
+from flask import Blueprint, request, jsonify
+
+from placetrace.web.database import get_db
+from placetrace.web.serialize import format_location_name
 
 bp = Blueprint('locations', __name__)
 
@@ -15,7 +15,7 @@ bp = Blueprint('locations', __name__)
 def get_locations():
     """
     Get locations with optional filters
-    
+
     Query parameters:
         - country: Filter by country name
         - state: Filter by state name
@@ -23,108 +23,90 @@ def get_locations():
         - admin_level: Filter by admin level (2, 4, 6, 8)
         - limit: Maximum results (default 100)
         - offset: Pagination offset (default 0)
-    
+
     Returns:
         JSON response with locations array, each including visit counts
     """
-    try:
-        # Parse query parameters
-        country = request.args.get('country')
-        state = request.args.get('state')
-        city = request.args.get('city')
-        admin_level = request.args.get('admin_level', type=int)
-        limit = request.args.get('limit', type=int, default=100)
-        offset = request.args.get('offset', type=int, default=0)
-        
-        # Validate limit
-        if limit < 1 or limit > 1000:
-            return jsonify({'error': 'limit must be between 1 and 1000', 'status': 400}), 400
-        
-        # Validate admin_level if provided
-        if admin_level and admin_level not in [2, 4, 6, 8]:
-            return jsonify({'error': 'admin_level must be 2, 4, 6, or 8', 'status': 400}), 400
-        
-        # Build query
-        query = db.select(Location)
-        
-        filters = {}
-        
-        # Apply filters
-        if country:
-            query = query.where(Location.country == country)
-            filters['country'] = country
-        
-        if state:
-            query = query.where(Location.state == state)
-            filters['state'] = state
-        
-        if city:
-            query = query.where(Location.city == city)
-            filters['city'] = city
-        
-        if admin_level:
-            query = query.where(Location.admin_level == admin_level)
-            filters['admin_level'] = admin_level
-        
-        # Order by admin level (most specific first), then alphabetically
-        query = query.order_by(Location.admin_level.desc(), Location.city, Location.state, Location.country)
-        
-        # Apply pagination
-        query = query.limit(limit).offset(offset)
-        
-        # Execute query
-        locations = db.session.execute(query).scalars().all()
-        
-        # Get visit counts for each location
-        location_ids = [loc.id for loc in locations]
-        
-        visit_counts = {}
+    country = request.args.get('country')
+    state = request.args.get('state')
+    city = request.args.get('city')
+    admin_level = request.args.get('admin_level', type=int)
+    limit = request.args.get('limit', type=int, default=100)
+    offset = request.args.get('offset', type=int, default=0)
 
-        if location_ids:
-            # Count visits per location
-            visit_count_query = db.select(
-                Visit.location_id,
-                func.count(Visit.id).label('count')
-            ).where(
-                Visit.location_id.in_(location_ids)
-            ).group_by(Visit.location_id)
+    if limit < 1 or limit > 1000:
+        return jsonify({'error': 'limit must be between 1 and 1000', 'status': 400}), 400
 
-            visit_results = db.session.execute(visit_count_query).all()
-            visit_counts = {row[0]: row[1] for row in visit_results}
-        
-        # Format response
-        locations_data = []
-        for location in locations:
-            # Get centroid coordinates if available
-            lat, lng = None, None
-            if location.centroid:
-                coords = db.session.execute(
-                    db.select(
-                        func.ST_Y(func.ST_GeomFromWKB(location.centroid)).label('lat'),
-                        func.ST_X(func.ST_GeomFromWKB(location.centroid)).label('lng')
-                    )
-                ).first()
-                lat, lng = coords.lat, coords.lng
-            
-            locations_data.append({
-                'id': location.id,
-                'city': location.city,
-                'county': location.county,
-                'state': location.state,
-                'country': location.country,
-                'admin_level': location.admin_level,
-                'formatted_name': location.format_name(),
-                'centroid_latitude': lat,
-                'centroid_longitude': lng,
-                'visit_count': visit_counts.get(location.id, 0)
-            })
-        
-        return jsonify({
-            'locations': locations_data,
-            'count': len(locations_data),
-            'filters_applied': filters
-        })
-    
-    except Exception as e:
-        current_app.logger.error(f"Error in get_locations: {str(e)}")
-        return jsonify({'error': 'Internal server error', 'status': 500}), 500
+    if admin_level and admin_level not in [2, 4, 6, 8]:
+        return jsonify({'error': 'admin_level must be 2, 4, 6, or 8', 'status': 400}), 400
+
+    where = []
+    params = {
+        'limit': limit,
+        'offset': offset,
+    }
+    filters = {}
+
+    if country:
+        where.append("l.country = %(country)s")
+        params['country'] = country
+        filters['country'] = country
+
+    if state:
+        where.append("l.state = %(state)s")
+        params['state'] = state
+        filters['state'] = state
+
+    if city:
+        where.append("l.city = %(city)s")
+        params['city'] = city
+        filters['city'] = city
+
+    if admin_level:
+        where.append("l.admin_level = %(admin_level)s")
+        params['admin_level'] = admin_level
+        filters['admin_level'] = admin_level
+
+    where_sql = "WHERE " + " AND ".join(where) if where else ""
+
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute(f"""
+            SELECT
+                l.id,
+                l.city,
+                l.county,
+                l.state,
+                l.country,
+                l.admin_level,
+                ST_Y(l.centroid::geometry) AS centroid_latitude,
+                ST_X(l.centroid::geometry) AS centroid_longitude,
+                count(v.id) AS visit_count
+            FROM Locations l
+            LEFT JOIN Visits v ON v.location_id = l.id
+            {where_sql}
+            GROUP BY l.id
+            ORDER BY l.admin_level DESC, l.city, l.state, l.country, l.id
+            LIMIT %(limit)s OFFSET %(offset)s
+        """, params)
+        locations = cursor.fetchall()
+
+    return jsonify({
+        'locations': [
+            {
+                'id': row['id'],
+                'city': row['city'],
+                'county': row['county'],
+                'state': row['state'],
+                'country': row['country'],
+                'admin_level': row['admin_level'],
+                'formatted_name': format_location_name(row),
+                'centroid_latitude': row['centroid_latitude'],
+                'centroid_longitude': row['centroid_longitude'],
+                'visit_count': row['visit_count'],
+            }
+            for row in locations
+        ],
+        'count': len(locations),
+        'filters_applied': filters,
+    })
