@@ -13,7 +13,7 @@ Personal location history explorer built on PostGIS. Imports Google Timeline dat
 ## Stack
 
 - **Database:** PostgreSQL + PostGIS
-- **Backend:** Flask, SQLAlchemy, GeoAlchemy2
+- **Backend:** Flask + psycopg (raw SQL)
 - **Frontend:** Leaflet, Alpine.js, Tailwind CSS
 - **Pipeline:** Python multiprocessing with psycopg (raw SQL for bulk operations)
 
