@@ -8,7 +8,7 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from placetrace.web.database import get_db
+from location_history.web.database import get_db
 
 bp = Blueprint('movements', __name__)
 

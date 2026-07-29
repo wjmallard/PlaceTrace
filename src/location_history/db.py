@@ -7,7 +7,7 @@ Provides geocoding and location management functions
 import psycopg
 from psycopg.rows import dict_row
 
-from placetrace.config import MAIN_DB, OSM_DB
+from location_history.config import MAIN_DB, OSM_DB
 
 # OSM admin_level -> location field, most specific first
 ADMIN_LEVELS = {

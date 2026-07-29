@@ -10,9 +10,9 @@ Usage:
 import argparse
 from collections import defaultdict
 
-from placetrace.db import get_location_name, get_main_connection
-from placetrace.geo import haversine_km
-from placetrace.places.locations import (
+from location_history.db import get_location_name, get_main_connection
+from location_history.geo import haversine_km
+from location_history.places.locations import (
     load_locations,
     ranges_overlap,
     save_locations,

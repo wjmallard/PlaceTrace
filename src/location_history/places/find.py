@@ -12,8 +12,8 @@ import json
 import sys
 from datetime import datetime, date
 
-from placetrace.db import get_location_name, get_main_connection
-from placetrace.config import project_root
+from location_history.db import get_location_name, get_main_connection
+from location_history.config import project_root
 
 
 def find_location_candidates(conn, start_date, end_date, min_hours=100):

@@ -8,9 +8,9 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from placetrace.config import TRIP_CATEGORIES
-from placetrace.web.database import get_db
-from placetrace.web.serialize import (
+from location_history.config import TRIP_CATEGORIES
+from location_history.web.database import get_db
+from location_history.web.serialize import (
     VISIT_COLUMNS,
     format_location_name,
     visit_dict,

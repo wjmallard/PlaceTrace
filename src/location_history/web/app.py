@@ -5,8 +5,8 @@ Main application entry point
 
 from flask import Flask
 
-from placetrace.web.database import init_db
-from placetrace.web.routes import visits, locations, trips, movements, stats, frontend
+from location_history.web.database import init_db
+from location_history.web.routes import visits, locations, trips, movements, stats, frontend
 
 
 def create_app():

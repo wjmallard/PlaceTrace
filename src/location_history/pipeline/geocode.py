@@ -11,13 +11,13 @@ import argparse
 from tqdm import tqdm
 import sys
 
-from placetrace.db import (
+from location_history.db import (
     geocode_point,
     get_main_connection,
     get_or_create_location,
     get_osm_connection,
 )
-from placetrace.config import NUM_WORKERS
+from location_history.config import NUM_WORKERS
 
 # For multiprocessing
 from multiprocessing import Pool

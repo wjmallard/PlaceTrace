@@ -21,14 +21,14 @@ from datetime import timedelta, timezone
 
 from tqdm import tqdm
 
-from placetrace.config import ARC_EXPORT_DIR
-from placetrace.db import get_main_connection
-from placetrace.pipeline.import_movements import (
+from location_history.config import ARC_EXPORT_DIR
+from location_history.db import get_main_connection
+from location_history.pipeline.import_movements import (
     find_adjacent_visit,
     insert_movement,
     normalize_activity_type,
 )
-from placetrace.pipeline.parse import parse_timestamp
+from location_history.pipeline.parse import parse_timestamp
 
 # Arc activity types with a Google Timeline equivalent; anything else is
 # normalized from Arc's own name (e.g. 'hiking' -> 'HIKING')

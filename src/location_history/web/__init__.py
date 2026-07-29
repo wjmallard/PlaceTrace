@@ -1,4 +1,4 @@
-from placetrace.web.app import create_app
+from location_history.web.app import create_app
 
 
 def main():

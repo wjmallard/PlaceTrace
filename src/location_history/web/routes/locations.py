@@ -5,8 +5,8 @@ GET /api/locations - List locations with filtering
 
 from flask import Blueprint, request, jsonify
 
-from placetrace.web.database import get_db
-from placetrace.web.serialize import format_location_name
+from location_history.web.database import get_db
+from location_history.web.serialize import format_location_name
 
 bp = Blueprint('locations', __name__)
 

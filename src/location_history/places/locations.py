@@ -8,7 +8,7 @@ is open-ended on that side ("since forever" / "until further notice").
 import json
 from datetime import date
 
-from placetrace.config import project_root
+from location_history.config import project_root
 
 
 def locations_path(location_type):

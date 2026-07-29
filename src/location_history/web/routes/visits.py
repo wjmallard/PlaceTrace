@@ -8,8 +8,8 @@ from datetime import datetime
 
 from flask import Blueprint, request, jsonify
 
-from placetrace.web.database import get_db
-from placetrace.web.serialize import VISIT_COLUMNS, format_location_name, visit_dict
+from location_history.web.database import get_db
+from location_history.web.serialize import VISIT_COLUMNS, format_location_name, visit_dict
 
 bp = Blueprint('visits', __name__)
 

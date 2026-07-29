@@ -5,7 +5,7 @@ Serves the map explorer UI
 
 from flask import Blueprint, render_template
 
-from placetrace.config import MAP
+from location_history.config import MAP
 
 # Create blueprint with template and static folders
 bp = Blueprint('frontend', __name__,

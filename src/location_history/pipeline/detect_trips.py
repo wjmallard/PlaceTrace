@@ -19,10 +19,10 @@ from datetime import date, timedelta
 from tqdm import tqdm
 import sys
 
-from placetrace.db import get_main_connection
-from placetrace.config import TRIPS
-from placetrace.geo import haversine_km
-from placetrace.places.locations import covers, load_locations
+from location_history.db import get_main_connection
+from location_history.config import TRIPS
+from location_history.geo import haversine_km
+from location_history.places.locations import covers, load_locations
 
 HOME_RADIUS_KM = 20  # Within this distance of home counts as "at home"
 WORK_RADIUS_KM = 1   # Within this distance of work counts as "at work"

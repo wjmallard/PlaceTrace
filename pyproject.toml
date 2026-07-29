@@ -1,5 +1,5 @@
 [project]
-name = "placetrace"
+name = "location-history"
 version = "0.1.0"
 description = "Personal location history explorer"
 readme = "README.md"
@@ -13,21 +13,21 @@ dependencies = [
 ]
 
 [project.scripts]
-pt = "placetrace.cli:main"
-pt-web = "placetrace.web:main"
-pt-ingest = "placetrace.pipeline.ingest:main"
-pt-import-visits = "placetrace.pipeline.import_visits:main"
-pt-import-movements = "placetrace.pipeline.import_movements:main"
-pt-import-arc = "placetrace.pipeline.import_arc:main"
-pt-geocode = "placetrace.pipeline.geocode:main"
-pt-detect-trips = "placetrace.pipeline.detect_trips:main"
-pt-find-places = "placetrace.places.find:main"
-pt-manage-places = "placetrace.places.manage:main"
-pt-query = "placetrace.places.query:main"
+pt = "location_history.cli:main"
+pt-web = "location_history.web:main"
+pt-ingest = "location_history.pipeline.ingest:main"
+pt-import-visits = "location_history.pipeline.import_visits:main"
+pt-import-movements = "location_history.pipeline.import_movements:main"
+pt-import-arc = "location_history.pipeline.import_arc:main"
+pt-geocode = "location_history.pipeline.geocode:main"
+pt-detect-trips = "location_history.pipeline.detect_trips:main"
+pt-find-places = "location_history.places.find:main"
+pt-manage-places = "location_history.places.manage:main"
+pt-query = "location_history.places.query:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/placetrace"]
+packages = ["src/location_history"]

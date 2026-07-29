@@ -6,7 +6,7 @@ Run pt-query --help for the list of commands.
 
 import argparse
 
-from placetrace.db import get_main_connection
+from location_history.db import get_main_connection
 
 
 def stats(conn):

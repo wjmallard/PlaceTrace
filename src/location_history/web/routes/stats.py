@@ -6,7 +6,7 @@ GET /api/stats/movement - Movement aggregate statistics by activity type
 
 from flask import Blueprint, jsonify
 
-from placetrace.web.database import get_db
+from location_history.web.database import get_db
 
 bp = Blueprint('stats', __name__)
 

@@ -21,9 +21,9 @@ from datetime import timedelta
 from tqdm import tqdm
 import sys
 
-from placetrace.db import get_main_connection
-from placetrace.config import LOCATION_HISTORY_JSON
-from placetrace.pipeline.parse import (
+from location_history.db import get_main_connection
+from location_history.config import LOCATION_HISTORY_JSON
+from location_history.pipeline.parse import (
     explicit_offset,
     local_date_time,
     parse_geo_point,

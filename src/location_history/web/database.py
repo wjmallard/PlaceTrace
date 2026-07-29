@@ -4,7 +4,7 @@ Per-request database connection management
 
 from flask import g
 
-from placetrace.db import get_main_connection
+from location_history.db import get_main_connection
 
 
 def get_db():

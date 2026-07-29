@@ -12,10 +12,10 @@ import importlib
 import sys
 
 STEPS = [
-    ("import-visits",    "placetrace.pipeline.import_visits"),
-    ("import-movements", "placetrace.pipeline.import_movements"),
-    ("geocode",          "placetrace.pipeline.geocode"),
-    ("detect-trips",     "placetrace.pipeline.detect_trips"),
+    ("import-visits",    "location_history.pipeline.import_visits"),
+    ("import-movements", "location_history.pipeline.import_movements"),
+    ("geocode",          "location_history.pipeline.geocode"),
+    ("detect-trips",     "location_history.pipeline.detect_trips"),
 ]
 
 STEP_NAMES = [name for name, _ in STEPS]

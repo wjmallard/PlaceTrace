@@ -18,9 +18,9 @@ import orjson
 from tqdm import tqdm
 import sys
 
-from placetrace.db import get_main_connection
-from placetrace.config import LOCATION_HISTORY_JSON
-from placetrace.pipeline.parse import local_date_time, parse_geo_point, parse_timestamp
+from location_history.db import get_main_connection
+from location_history.config import LOCATION_HISTORY_JSON
+from location_history.pipeline.parse import local_date_time, parse_geo_point, parse_timestamp
 
 
 def get_existing_visits(conn):
