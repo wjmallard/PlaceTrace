@@ -1,5 +1,5 @@
 """
-pt-import-arc — Import Arc app daily exports.
+lh-import-arc — Import Arc app daily exports.
 
 Arc daily JSON exports (Export/JSON/Daily/*.json.gz) hold interleaved visits
 and activities with dense GPS samples. This importer:
@@ -152,7 +152,7 @@ def import_arc_movements(conn, force=False):
             conn.commit()
         else:
             print(f"✓ {existing_count:,} Arc movements already imported, skipping")
-            print("  To re-import, run: pt-import-arc --force")
+            print("  To re-import, run: lh-import-arc --force")
             cursor.close()
             return 0
 

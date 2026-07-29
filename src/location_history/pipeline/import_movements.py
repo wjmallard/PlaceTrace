@@ -1,5 +1,5 @@
 """
-pt-import-movements — Import movement data from Google Timeline JSON.
+lh-import-movements — Import movement data from Google Timeline JSON.
 
 Handles multiple Google Timeline formats:
 1. Old format (2014-2018): 'activity' objects

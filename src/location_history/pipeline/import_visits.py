@@ -1,12 +1,12 @@
 """
-pt-import-visits — Import Google Timeline location history visits.
+lh-import-visits — Import Google Timeline location history visits.
 
 - Streaming insertions: insert as parsing progresses (Ctrl-C safe)
 - Parses location-history.json
 - Extracts visit entries only (skips activities/paths)
 - Stores lat/lon in geography column
 - Extracts local_date and local_time from timezone-aware timestamps
-- Sets location_id = NULL (geocoded later by pt-geocode)
+- Sets location_id = NULL (geocoded later by lh-geocode)
 - Sets visit_type = 'timeline'
 - Resume capability via duplicate detection
 """

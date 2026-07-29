@@ -1,10 +1,10 @@
 """
-pt-ingest — Run the full PlaceTrace pipeline in order.
+lh-ingest — Run the full PlaceTrace pipeline in order.
 
 Usage:
-    pt-ingest                  # run all steps
-    pt-ingest --from geocode   # resume from a specific step
-    pt-ingest --list           # show available steps
+    lh-ingest                  # run all steps
+    lh-ingest --from geocode   # resume from a specific step
+    lh-ingest --list           # show available steps
 """
 
 import argparse
@@ -62,12 +62,12 @@ def main():
             module.main(argv=[])
         except KeyboardInterrupt:
             print(f"\n\nInterrupted during '{name}'. Resume with:")
-            print(f"  pt-ingest --from {name}")
+            print(f"  lh-ingest --from {name}")
             sys.exit(1)
         except Exception as e:
             print(f"\nError during '{name}': {e}")
             print(f"Fix the issue and resume with:")
-            print(f"  pt-ingest --from {name}")
+            print(f"  lh-ingest --from {name}")
             sys.exit(1)
 
     print(f"\n{'='*60}")

@@ -1,10 +1,10 @@
 """
-pt-find-places — Find and add home or work locations for specific date ranges.
+lh-find-places — Find and add home or work locations for specific date ranges.
 
 Usage:
-    pt-find-places home                        # interactive mode
-    pt-find-places work 2018-01-01 2020-12-31
-    pt-find-places home 2015-06-01 present
+    lh-find-places home                        # interactive mode
+    lh-find-places work 2018-01-01 2020-12-31
+    lh-find-places home 2015-06-01 present
 """
 
 import argparse

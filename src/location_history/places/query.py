@@ -1,7 +1,7 @@
 """
-pt-query — Explore your location history from the terminal.
+lh-query — Explore your location history from the terminal.
 
-Run pt-query --help for the list of commands.
+Run lh-query --help for the list of commands.
 """
 
 import argparse

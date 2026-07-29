@@ -72,8 +72,8 @@ Import your data and launch the web app:
 
 ```bash
 uv sync
-uv run pt-ingest
-uv run pt-web
+uv run lh-ingest
+uv run lh-web
 ```
 
-Run `uv run pt` to see all available commands.
+Run `uv run lh` to see all available commands.

@@ -13,17 +13,17 @@ dependencies = [
 ]
 
 [project.scripts]
-pt = "location_history.cli:main"
-pt-web = "location_history.web:main"
-pt-ingest = "location_history.pipeline.ingest:main"
-pt-import-visits = "location_history.pipeline.import_visits:main"
-pt-import-movements = "location_history.pipeline.import_movements:main"
-pt-import-arc = "location_history.pipeline.import_arc:main"
-pt-geocode = "location_history.pipeline.geocode:main"
-pt-detect-trips = "location_history.pipeline.detect_trips:main"
-pt-find-places = "location_history.places.find:main"
-pt-manage-places = "location_history.places.manage:main"
-pt-query = "location_history.places.query:main"
+lh = "location_history.cli:main"
+lh-web = "location_history.web:main"
+lh-ingest = "location_history.pipeline.ingest:main"
+lh-import-visits = "location_history.pipeline.import_visits:main"
+lh-import-movements = "location_history.pipeline.import_movements:main"
+lh-import-arc = "location_history.pipeline.import_arc:main"
+lh-geocode = "location_history.pipeline.geocode:main"
+lh-detect-trips = "location_history.pipeline.detect_trips:main"
+lh-find-places = "location_history.places.find:main"
+lh-manage-places = "location_history.places.manage:main"
+lh-query = "location_history.places.query:main"
 
 [build-system]
 requires = ["hatchling"]

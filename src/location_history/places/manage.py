@@ -1,10 +1,10 @@
 """
-pt-manage-places — Auto-detect and manage home/work locations that change over time.
+lh-manage-places — Auto-detect and manage home/work locations that change over time.
 
 Usage:
-    pt-manage-places --detect home    # Auto-detect all homes
-    pt-manage-places --detect work    # Auto-detect all workplaces
-    pt-manage-places --list           # List current locations
+    lh-manage-places --detect home    # Auto-detect all homes
+    lh-manage-places --detect work    # Auto-detect all workplaces
+    lh-manage-places --list           # List current locations
 """
 
 import argparse
@@ -290,7 +290,7 @@ def list_locations(location_type):
 
     if not locations:
         print(f"\nNo {location_type} locations configured yet.")
-        print(f"Run: pt-manage-places --detect {location_type}")
+        print(f"Run: lh-manage-places --detect {location_type}")
     else:
         print()
         for i, loc in enumerate(locations, 1):

@@ -1,5 +1,5 @@
 """
-pt-geocode — Batch geocode all Visits with NULL location_id.
+lh-geocode — Batch geocode all Visits with NULL location_id.
 
 - Finds unique coordinates from Visits
 - Geocodes each unique coordinate ONCE

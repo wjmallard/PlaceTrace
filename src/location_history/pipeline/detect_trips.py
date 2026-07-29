@@ -1,5 +1,5 @@
 """
-pt-detect-trips — Detect and categorize trips from location history.
+lh-detect-trips — Detect and categorize trips from location history.
 
 - Loads home/work locations from JSON files (date-aware)
 - Checks for connecting Movements when evaluating visit gaps
@@ -788,7 +788,7 @@ def main(argv=None):
     if not home_locations:
         print("\n✗ No home locations configured (data/home_locations.json)")
         print("   Without them every visit looks like a trip.")
-        print("   Run pt-find-places or pt-manage-places --detect home first.")
+        print("   Run lh-find-places or lh-manage-places --detect home first.")
         sys.exit(1)
 
     print(f"✓ Loaded {len(home_locations)} home locations")
