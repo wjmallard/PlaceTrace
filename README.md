@@ -1,4 +1,4 @@
-# PlaceTrace
+# location-history
 
 Personal location history explorer built on PostGIS. Imports Google Timeline data, reverse-geocodes against a local OSM database, detects trips, and serves an interactive web UI for browsing your location history.
 
@@ -28,7 +28,7 @@ Personal location history explorer built on PostGIS. Imports Google Timeline dat
 
 ## Data Source
 
-PlaceTrace works with Google Timeline data exported via [Google Takeout](https://takeout.google.com/). Select **Location History** and export in JSON format. The export produces a `location-history.json` file containing your visits and movements.
+location-history works with Google Timeline data exported via [Google Takeout](https://takeout.google.com/). Select **Location History** and export in JSON format. The export produces a `location-history.json` file containing your visits and movements.
 
 ## OSM Boundaries Database
 
@@ -64,8 +64,8 @@ Point `config.yaml` to your `location-history.json` from Google Takeout.
 Install Postgres and configure the database:
 
 ```bash
-createdb placetrace
-psql placetrace < sql/schema.sql
+createdb location_history
+psql location_history < sql/schema.sql
 ```
 
 Import your data and launch the web app:

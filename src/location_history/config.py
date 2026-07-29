@@ -1,4 +1,4 @@
-"""Unified config loader for PlaceTrace."""
+"""Unified config loader for location-history."""
 
 import yaml
 from pathlib import Path

@@ -1,8 +1,8 @@
-# PlaceTrace Configuration
+# location-history Configuration
 
 # Database Settings
 databases:
-  main: placetrace                 # Main database
+  main: location_history           # Main database
   osm: osm_boundaries              # OSM boundaries for geocoding
 
 # Source Data

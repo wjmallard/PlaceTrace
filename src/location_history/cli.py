@@ -1,10 +1,10 @@
-"""PlaceTrace CLI — list available commands."""
+"""location-history CLI — list available commands."""
 
 import argparse
 
 
 def main():
-    parser = argparse.ArgumentParser(description="List available PlaceTrace commands.")
+    parser = argparse.ArgumentParser(description="List available location-history commands.")
     parser.add_argument(
         "--all",
         action="store_true",
@@ -12,7 +12,7 @@ def main():
     )
     args = parser.parse_args()
 
-    print("PlaceTrace — available commands:\n")
+    print("location-history — available commands:\n")
     print(f"  {"lh-web":<25} Start the web UI")
     print(f"  {"lh-ingest":<25} Run the full ingest pipeline")
     print(f"  {"lh-query":<25} Query location history from the CLI")

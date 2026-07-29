@@ -2,7 +2,7 @@
 Generate a synthetic Google Timeline export for a fictional persona.
 
 Produces demo/location-history.json (plus suggested home/work location
-entries) for trying PlaceTrace without a real Takeout export, and for
+entries) for trying location-history without a real Takeout export, and for
 regenerating the README screenshots. Deterministic: same output every run.
 
 The persona lives in San Francisco's Mission District, works downtown,

@@ -1,5 +1,5 @@
 """
-PlaceTrace Frontend Blueprint
+location-history Frontend Blueprint
 Serves the map explorer UI
 """
 

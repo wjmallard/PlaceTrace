@@ -1,5 +1,5 @@
 """
-PlaceTrace Flask API
+location-history Flask API
 Main application entry point
 """
 

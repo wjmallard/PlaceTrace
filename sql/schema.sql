@@ -1,5 +1,5 @@
 --
--- PlaceTrace Database Schema
+-- location-history Database Schema
 -- PostgreSQL with PostGIS
 --
 

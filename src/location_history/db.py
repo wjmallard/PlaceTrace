@@ -1,5 +1,5 @@
 """
-Database configuration and operations for PlaceTrace
+Database configuration and operations for location-history
 Handles connections to both main database and OSM boundaries database
 Provides geocoding and location management functions
 """

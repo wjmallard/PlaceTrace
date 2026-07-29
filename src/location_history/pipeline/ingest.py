@@ -1,5 +1,5 @@
 """
-lh-ingest — Run the full PlaceTrace pipeline in order.
+lh-ingest — Run the full location-history pipeline in order.
 
 Usage:
     lh-ingest                  # run all steps
@@ -23,7 +23,7 @@ STEP_NAMES = [name for name, _ in STEPS]
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run the full PlaceTrace pipeline in order.",
+        description="Run the full location-history pipeline in order.",
     )
     parser.add_argument(
         "--from",

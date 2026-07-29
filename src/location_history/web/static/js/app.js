@@ -1,4 +1,4 @@
-// PlaceTrace Alpine.js App
+// location-history Alpine.js App
 
 // Spot key -> Leaflet marker. Kept outside the Alpine component so the
 // markers are not wrapped in reactive proxies.
@@ -9,7 +9,7 @@ function spotKey(lat, lon) {
     return lat.toFixed(6) + ',' + lon.toFixed(6);
 }
 
-function placeTraceApp() {
+function locationHistoryApp() {
     return {
         // State
         map: null,
@@ -169,7 +169,7 @@ function placeTraceApp() {
         // Initialize Leaflet map
         initMap() {
             // Map settings injected by the template from config.yaml
-            const mapConfig = window.PLACETRACE_CONFIG;
+            const mapConfig = window.LOCATION_HISTORY_CONFIG;
 
             // Create map at the configured center (disable scroll wheel zoom during init)
             this.map = L.map('map', {

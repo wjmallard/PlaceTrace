@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PlaceTrace</title>
+    <title>Location History</title>
     
     <!-- Favicon -->
     <link rel="icon" href="data:,">
@@ -20,12 +20,12 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="h-screen overflow-hidden">
-    <div x-data="placeTraceApp()" class="flex h-full">
+    <div x-data="locationHistoryApp()" class="flex h-full">
         <!-- Sidebar -->
         <div class="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
             <!-- Header -->
             <div class="p-4 border-b border-gray-200">
-                <h1 class="text-2xl font-bold text-gray-900">PlaceTrace</h1>
+                <h1 class="text-2xl font-bold text-gray-900">Location History</h1>
             </div>
             
             <!-- Selected Spot Panel -->
@@ -453,7 +453,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- Map settings from config.yaml -->
-    <script>window.PLACETRACE_CONFIG = {{ map_config | tojson }};</script>
+    <script>window.LOCATION_HISTORY_CONFIG = {{ map_config | tojson }};</script>
 
     <!-- App JS -->
     <script src="/static/js/app.js"></script>
